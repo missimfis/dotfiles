@@ -1,0 +1,7 @@
+[user]
+	name = missimfis
+	email = missimfis@gmail.com
+[push]
+	default = simple
+[init]
+	defaultBranch = main

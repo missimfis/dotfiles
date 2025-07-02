@@ -1,0 +1,91 @@
+layout {
+    default_tab_template {
+        // the default zellij tab-bar and status bar plugins
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane name="main"
+                pane name="commands"
+            }
+            pane split_direction="horizontal" {
+                children
+            }
+        }
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="m-c" focus=true {
+        pane command="btm"
+        pane command="zellij"{
+            args "da"
+            start_suspended true
+        }
+    }
+    tab name="upd" {
+        pane command="topgrade"{
+            args "-y"
+            start_suspended true
+        }
+    }
+    tab name="llm" {
+        pane command="ollama"{
+            args "serve"
+            start_suspended true
+        }
+        pane command="ollama"{
+            args "run" "deepseek-r1:14b"
+            start_suspended true
+        }
+    }
+    tab name="news" {
+        pane command="newsboat"
+    }
+    tab name="msc" {
+        pane command="ncmpcpp"
+    }
+    tab name="r shop" cwd="/home/lion/Dokumente/code/rust/shop/" {
+        pane command="cargo"{
+            args "check"
+            start_suspended true
+        }
+        pane command="cargo"{
+            args "run"
+            start_suspended true
+        }
+        pane command="cargo"{
+            args "test"
+            start_suspended true
+        }
+    }
+    tab name="cv" cwd="~/Dokumente/Bewerbungen/newtrial/" {
+        pane name="build" cwd="deutsch" command="xelatex"{
+            args "cv.tex"
+            start_suspended true
+        }
+        pane name="pdf" cwd="deutsch" command="zathura" {
+            args "cv.pdf"
+            start_suspended true
+        }
+        pane name="buildE" cwd="english" command="xelatex"{
+            args "cv.tex"
+            start_suspended true
+        }
+        pane name="pdfE" cwd="english" command="zathura" {
+            args "cv.pdf"
+            start_suspended true
+        }
+    }
+    tab name="privacy" cwd="~/Dokumente/latex/privacy/" {
+        pane name="build" command="xelatex"{
+            args "privacy.tex"
+            start_suspended true
+        }
+        pane name="pdf" command="zathura" {
+            args "privacy.pdf"
+            start_suspended true
+        }
+    }
+}
