@@ -32,7 +32,8 @@ export MPD_HOST="localhost"
 eval "$(frum init)"
 source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-export SSH_AUTH_SOCK="/tmp/ssh-XXXXXXz3lLOX/agent.555"
+export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+eval $(ssh-agent -s)
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
