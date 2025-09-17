@@ -1,92 +1,97 @@
-
+# ────────────────────────────── Colours ──────────────────────────────
 [colors.bright]
-black = "#4C566A"
-blue = "#5e81ac"
-cyan = "#88c0d0"
-green = "#A3BE8C"
+black   = "#4C566A"
+blue    = "#5e81ac"
+cyan    = "#88c0d0"
+green   = "#A3BE8C"
 magenta = "#B48EAD"
-red = "#bf616a"
-white = "#abb2bf"
-yellow = "#D7BA7D"
+red     = "#bf616a"
+white   = "#abb2bf"
+yellow  = "#D7BA7D"
+
+[colors.normal]
+black   = "#4C566A"
+blue    = "#5e81ac"
+cyan    = "#88c0d0"
+green   = "#A3BE8C"
+magenta = "#B48EAD"
+red     = "#bf616a"
+white   = "#abb2bf"
+yellow  = "#D7BA7D"
 
 [colors.cursor]
 cursor = "#ECEFF4"
-text = "#3B4252"
-
-[colors.normal]
-black = "#4C566A"
-blue = "#5e81ac"
-cyan = "#88c0d0"
-green = "#A3BE8C"
-magenta = "#B48EAD"
-red = "#bf616a"
-white = "#abb2bf"
-yellow = "#D7BA7D"
+text   = "#3B4252"
 
 [colors.primary]
 background = "#1f2227"
 foreground = "#abb2bf"
 
+# ──────────────────────── Cursor style ────────────────────────
 [cursor.style]
 blinking = "Never"
 
+# ────────────────────────────── Font ──────────────────────────────
 [font]
 size = 13.0
 
+[font.normal]
+family = "Hack Nerd Font"
+style  = "Regular"
+
 [font.bold]
 family = "Hack Nerd Font"
-style = "Bold"
-
-[font.glyph_offset]
-x = 0
-y = 0
+style  = "Bold"
 
 [font.italic]
 family = "Hack Nerd Font"
-style = "Italic"
-
-[font.normal]
-family = "Hack Nerd Font"
-style = "Regular"
+style  = "Italic"
 
 [font.offset]
 x = 0
 y = 0
 
+[font.glyph_offset]
+x = 0
+y = 0
+
+# ──────────────────────── Keyboard bindings ────────────────────────
 [[keyboard.bindings]]
 action = "Paste"
-key = "V"
-mods = "Control|Shift"
+key    = "V"
+mods   = "Control|Shift"
 
 [[keyboard.bindings]]
 action = "Copy"
-key = "C"
-mods = "Control|Shift"
+key    = "C"
+mods   = "Control|Shift"
 
 [[keyboard.bindings]]
 action = "ResetFontSize"
-key = "Key0"
-mods = "Control"
+key    = "Key0"
+mods   = "Control"
 
 [[keyboard.bindings]]
 action = "IncreaseFontSize"
-key = "Equals"
-mods = "Control"
+key    = "Equals"
+mods   = "Control"
 
 [[keyboard.bindings]]
 action = "DecreaseFontSize"
-key = "Minus"
-mods = "Control"
+key    = "Minus"
+mods   = "Control"
 
+# ────────────────────────────── Window ──────────────────────────────
 [window]
-dynamic_title = true
-dynamic_padding = false
-decorations = "buttonless"
-opacity = 0.9
+dynamic_title    = true
+dynamic_padding  = false
+decorations      = "buttonless"
+opacity          = 0.9
 
 [window.padding]
 x = 10
 y = 10
 
+# ────────────────────────────── General ──────────────────────────────
 [general]
 live_config_reload = true

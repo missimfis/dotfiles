@@ -1,13 +1,9 @@
-# Default config for sway
-#
-# Copy this to ~/.config/sway/config and edit it to your liking.
-#
-# Read `man 5 sway` for a complete reference.
 
 exec nm-applet --indicator
 exec libinput-gestures-setup autostart start
 exec blueman-applet
 exec pasystray &
+exec mako
 
 ### Clamshell Mode
 set $laptop eDP-1
@@ -18,7 +14,6 @@ bindswitch --reload --locked lid:off output $laptop enable
 ### use xwayland
 #xwayland disable
 
-exec mako
 ### Variables
 #
 # Logo key. Use Mod1 for Alt.
@@ -29,7 +24,7 @@ set $down j
 set $up k
 set $right l
 # Your preferred terminal emulator
-set $term alacritty
+set $term foot
 set $browser firefox
 set $email thunderbird
 set $files thunar
@@ -79,17 +74,6 @@ exec swayidle -w \
 # your displays after another 300 seconds, and turn your screens back on when
 # resumed. It will also lock your screen before your computer goes to sleep.
 
-### Input configuration
-#
-# Example configuration:
-#
-#   input "2:14:SynPS/2_Synaptics_TouchPad" {
-#       dwt enabled
-#       tap enabled
-#       natural_scroll enabled
-#       middle_emulation enabled
-#   }
-#
 # You can get the names of your inputs by running: swaymsg -t get_inputs
 # Read `man 5 sway-input` for more information about this section.
  input * {
@@ -259,23 +243,7 @@ exec_always wireplumber
 # exec_always pw-volume mute off
 exec_always mpd -v
 exec_always /usr/bin/profile-sync-daemon startup
-#
-# Status Bar:
-#
-# Read `man 5 sway-bar` for more information about this section.
-#bar {
-#    position top
 
-    # When the status_command prints a new line to stdout, swaybar updates.
-    # The default just shows the current date and time.
-#    status_command while date +'%Y-%m-%d %I:%M:%S %p'; do sleep 1; done
-
-#    colors {
-#        statusline #ffffff
-#        background #323232
-#        inactive_workspace #32323200 #32323200 #5c5c5c
-#    }
-#}
 bar {
     swaybar_command waybar
 }
@@ -286,7 +254,8 @@ workspace 1
 exec_always $browser
 
 workspace 2
-exec_always alacritty -e zsh -c "zellij"
+# Launch Alacritty running Zellij on workspace 2, after a brief pause
+exec_always foot -e zellij
 
 workspace 3
 exec_always keepassxc

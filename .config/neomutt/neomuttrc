@@ -1,0 +1,31 @@
+set sort = 'reverse-date'
+set editor = nvim
+set timeout = "5"
+set mail_check = 10
+set date_format="%m%d %I:%M"
+
+auto_view text/html
+alternative_order text/plain text/enriched text/html
+
+set charset = UTF-8
+set imap_user="missimfis@gmail.com"
+set imap_pass="!Sn0g4Rd_1m"
+set smtp_url="smtps://missimfis@stmp.gmai.com:587/"
+set from = "missimfis@gmail.com"
+set real_name = "Mischa Fischer"
+set folder = "imaps://imap.gmail.com:993"
+set spool_file = "+INBOX"
+set record = /dev/null
+set postponed = "+[Gmail]/Drafts"
+set header_cache = "~/.config/neomutt/missimfis/cache/headers"
+set message_cache_dir = "~/.config/neomutt/missimfis/cache/bodies"
+set certificate_file = "~/.config/neomutt/missimfis/certificates"
+set ssl_starttls = yes
+set ssl_force_tls = yes
+#set signature = "~/.config/neomutt/missimfis/sig"
+bind index g noop
+macro index gi "<change-folder>=INBOX<enter>" "Got to inbox"
+macro index ga "<change-folder>=[Gmail]/All Mail<enter>" "Got to all mail"
+macro index gs "<change-folder>=[Gmail]/Sent Mail<enter>" "Got to sent mail"
+macro index gt "<change-folder>=[Gmail]/Trash<enter>" "Got to trash"
+macro index gd "<change-folder>=[Gmail]/Drafts<enter>" "Got to drafts"
