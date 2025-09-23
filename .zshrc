@@ -75,11 +75,11 @@ PROMPT='%{$fg[green]%}%n@%m%{$reset_color%} '           # user@host
 PROMPT+='%{$fg[blue]%}$(prompt_dir)%{$reset_color%} '   # cwd (shortened)
 PROMPT+='%(?.%{$fg[magenta]%}✔.%{$fg[red]%}✘)%{$reset_color%} ' # success/failure
 PROMPT+='%{$fg[yellow]%}$(git_prompt_info)%{$reset_color%}'   # git branch (if any)
-PROMPT+='%{$fg[cyan]%}$ %{$reset_color%}'               # final $ prompt
+PROMPT+='%{$fg[cyan]%}> %{$reset_color%}'               # final > prompt
 
 # Git branch helper – pure Zsh, no external tools
 git_prompt_info() {
   local ref=$(command git symbolic-ref --quiet HEAD 2>/dev/null) ||
                command git rev-parse --short HEAD 2>/dev/null
-  [[ -n $ref ]] && echo "(${ref#refs/heads/})"
+  [[ -n $ref ]] && echo "${ref#refs/heads/}"
 }
