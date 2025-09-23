@@ -13,6 +13,7 @@ set.shiftwidth     = 2
 set.tabstop        = 2
 set.smartindent    = true
 set.mouse          = 'a'
+set.clipboard=unnamedplus
 vim.opt.relativenumber = true
 
 -- ------------ Leader key ------------------------------------------------
