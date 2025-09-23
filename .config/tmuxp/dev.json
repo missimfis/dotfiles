@@ -1,0 +1,80 @@
+{
+  "session_name": "dev",
+  "windows": [
+    {
+      "window_name": "m-c",
+      "layout": "main-horizontal",
+      "panes": [
+        "btm"
+      ]
+    },
+    {
+      "window_name": "upd",
+      "layout": "tiled",
+      "panes": [
+        "topgrade -y"
+      ]
+    },
+    {
+      "window_name": "llm",
+      "layout": "main-horizontal",
+      "panes": [
+        "ollama serve",
+        "ollama run deepseek-r1:14b"
+      ]
+    },
+    {
+      "window_name": "news",
+      "layout": "tiled",
+      "panes": [
+        "newsboat",
+        ""
+      ]
+    },
+    {
+      "window_name": "msc",
+      "layout": "tiled",
+      "panes": [
+        "ncmpcpp"
+      ]
+    },
+    {
+      "window_name": "r shop",
+      "layout": "main-horizontal",
+      "start_directory": "/home/lion/Dokumente/code/rust/shop/",
+      "panes": [
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "window_name": "cv",
+      "layout": "tiled",
+      "panes": [
+        {
+          "",
+          ""
+        },
+        {
+          "",
+          ""
+        },
+      ]
+    },
+    {
+      "window_name": "privacy",
+      "layout": "tiled",
+      "panes": [
+        {
+          "",
+          ""
+        },
+        {
+          "",
+          ""
+        }
+      ]
+    }
+  ]
+}
