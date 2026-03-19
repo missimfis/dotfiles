@@ -4,22 +4,12 @@
     {
       "window_name": "m-c",
       "layout": "main-horizontal",
-      "panes": ["btm"]
+      "panes": ["", ""]
     },
     {
       "window_name": "upd",
       "layout": "tiled",
-      "panes": ["topgrade -y"]
-    },
-    {
-      "window_name": "llm",
-      "layout": "main-horizontal",
-      "panes": ["ollama serve", "ollama run deepseek-r1:14b"]
-    },
-    {
-      "window_name": "news",
-      "layout": "tiled",
-      "panes": ["newsboat", ""]
+      "panes": [""]
     },
     {
       "window_name": "msc",
@@ -33,12 +23,20 @@
       "panes": ["", ""]
     },
     {
+      "window_name": "jobcrawl",
+      "layout": "main-horizontal",
+      "start_directory": "/home/lion/Dokumente/code/rust/jobcrawl/",
+      "panes": ["", ""]
+    },
+    {
       "window_name": "cv",
       "layout": "main-horizontal",
+      "start_directory": "/home/lion/Dokumente/Bewerbungen/newtrial/",
       "panes": ["", ""]
     },
     {
       "window_name": "privacy",
+      "start_directory": "/home/lion/Dokumente/latex/privacy/",
       "layout": "main-horizontal",
       "panes": ["", ""]
     }

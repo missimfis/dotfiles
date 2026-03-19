@@ -17,7 +17,7 @@ setopt APPEND_HISTORY EXTENDED_HISTORY   # keep timestamps
 
 export EDITOR=nvim
 export TERMINAL=alacritty
-export BROWSER=firefox
+export BROWSER=librewolf
 
 export MANPAGER='nvim +Man!'
 export MANWIDTH=999
@@ -29,6 +29,6 @@ export MOZ_ENABLE_WAYLAND=1
 export GOPATH=$HOME/.local/share/go
 
 # Initialise zoxide (still useful)
-eval "$(zoxide init zsh)"
+
 
 

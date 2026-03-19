@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 #Dateinamen für die Dateien
 FROM=missimfis_$(date +%Y%m)01_backup.tar.bz2
 TO=missimfis_$(date +%Y%m)_backup.tar.bz2

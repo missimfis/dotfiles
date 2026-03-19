@@ -1,6 +1,7 @@
 
 exec nm-applet --indicator
-exec libinput-gestures-setup autostart start
+exec --no-startup-id foot --server
+# exec libinput-gestures-setup autostart start
 exec blueman-applet
 exec pasystray &
 exec mako
@@ -24,10 +25,11 @@ set $down j
 set $up k
 set $right l
 # Your preferred terminal emulator
-set $term foot
-set $browser firefox
+set $term footclient
+set $browser librewolf
 set $email thunderbird
 set $files thunar
+set $news newsboat
 # Your preferred application launcher
 # Note: pass the final command to swaymsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
@@ -39,20 +41,27 @@ set $menu exec wofi --show drun --prompt=""
 # output * bg /usr/share/backgrounds/default.png fill
 #output * bg ~/Bilder/backgrounds/subaru_wallpaper.jpg fill
 # output * bg ~/Bilder/backgrounds/3440x1440-hd-x8ac2q771kqusls0.jpg fill
-output * scale 2
+output * scale 1
 
-gaps inner 0
+gaps inner 2
 gaps outer 0
-gaps horizontal 0
-gaps vertical 0
 gaps top 0
 gaps right 0
 gaps bottom 0
 gaps left 0
 
-client.focused #8fd4ff #8fd4ff #8fd4ff #8fd4ff #8fd4ff
-default_border pixel 1
-exec_always setwall random ~/Bilder/backgrounds/ -c sway
+# Nord colors
+client.focused #88c0d0 #88c0d0 #2e3440 #88c0d0
+client.focused_inactive #4c566a #4c566a #2e3440 #4c566a
+client.unfocused #3b4252 #3b4252 #2e3440 #3b4252
+client.urgent #bf616a #bf616a #2e3440 #bf616a
+
+default_border pixel 2
+default_floating_border pixel 2
+
+smart_borders on
+smart_gaps off
+exec_always output * bg ~/Bilder/backgrounds/nord_quote.png fill
 
 #
 # Example configuration:
@@ -60,15 +69,16 @@ exec_always setwall random ~/Bilder/backgrounds/ -c sway
 #   output HDMI-A-1 resolution 1920x1080 position 1920,0
 #
 # You can get the names of your outputs by running: swaymsg -t get_outputs
-
+# output HDMI-A-1 resolution 3440x1440 position 1920,0
+# output HDMI-A-1 resolution 3440x1440 position 3360,0
 ### Idle configuration
 #
 # Example configuration:
 #
 exec swayidle -w \
-         timeout 2700 'swaylock -f -c 000000' \
-         timeout 5400 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' \
-         before-sleep 'swaylock -f -c 000000'
+         timeout 2700 'swaylock -f -i ~/Bilder/backgrounds/nord_quote.png -c 2e3440' \
+         timeout 5400 'wlr-randr --off' resume 'wlr-randr --on' \
+         before-sleep 'swaylock -f -i ~/Bilder/backgrounds/nord_quote.png -c 2e3440'
 #
 # This will lock your screen after 300 seconds of inactivity, then turn off
 # your displays after another 300 seconds, and turn your screens back on when
@@ -239,13 +249,15 @@ bindsym $mod+Shift+s exec grim -g "{slurp}"
 
 
 exec_always pipewire
+exec_always pipewire-pulse
 exec_always wireplumber
 # exec_always pw-volume mute off
 exec_always mpd -v
-exec_always /usr/bin/profile-sync-daemon startup
+# exec_always /usr/bin/profile-sync-daemon startup
 
 bar {
     swaybar_command waybar
+    position top
 }
 
 exec_always brightnessctl s 5%
@@ -254,10 +266,11 @@ workspace 1
 exec_always $browser
 
 workspace 2
-# Launch Alacritty running Zellij on workspace 2, after a brief pause
-exec_always foot -e zellij
+exec_always foot -e tmuxp load dev
 
 workspace 3
+exec_always foot -e $news
+
+workspace 4
 exec_always keepassxc
 
-include /etc/sway/config.d/*

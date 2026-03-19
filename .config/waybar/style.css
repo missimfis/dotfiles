@@ -1,87 +1,98 @@
+/* Nord Theme - Blue Accent */
+
 * {
-  font-family: "Hack Nerd Font";
-  font-size: 16px;
+    font-family: "JetBrains Nerd Font", "Font Awesome 6 Free";
+    font-size: 13px;
+    border: none;
 }
 
 window#waybar {
-  background-color: #225877;
-  color: #ffffff;
+    background: #2e3440;
+    border-bottom: 2px solid #88c0d0;
+    padding: 0 8px;
 }
 
-.modules-left {
-  background-color: #323232;
-  padding: 0px 0px 0px 0px;
+tooltip {
+    background: #3b4252;
+    color: #d8dee9;
+    border-radius: 8px;
+    border: 1px solid #88c0d0;
 }
 
+tooltip label {
+    color: #d8dee9;
+}
+
+#waybar-background {
+    background: #2e3440;
+}
+
+.modules-left,
+.modules-center,
 .modules-right {
-  background-color: #323232;
-  padding: 0px 5px 0px 0px;
-}
-
-#custom-scratch {
-  background-color: #323232;
-  color: #b8b8b8;
-  padding: 0px 9px 0px 9px;
+    background: #2e3440;
 }
 
 #workspaces {
+    margin-right: 6px;
 }
 
 #workspaces button {
-  padding: 0px 11px 0px 11px;
-  min-width: 1px;
-  color: #888888;
+    color: #81a1c1;
+    padding: 0 8px;
+    min-width: 26px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
 }
 
-#workspaces button.focused {
-  padding: 0px 11px 0px 11px;
-  background-color: #285577;
-  color: #ffffff;
+#workspaces button.active {
+    background: #88c0d0;
+    color: #2e3440;
 }
 
-#mode {
-  background-color: #900000;
-  color: #ffffff;
-  padding: 0px 5px 0px 5px;
-  border: 1px solid #2f343a;
+#workspaces button.visible {
+    background: #81a1c1;
+    color: #2e3440;
 }
 
-#window {
-  color: #ffffff;
-  background-color: #285577;
-  padding: 0px 10px 0px 10px;
+#workspaces button.urgent {
+    background: #bf616a;
+    color: #eceff4;
 }
 
-window#waybar.empty #window {
-  background-color: transparent;
-  color: transparent;
-}
-
-window#waybar.empty {
-  background-color: #323232;
-}
-
+#clock,
+#battery,
+#cpu,
+#memory,
 #network,
-#temperature,
 #backlight,
-#pulseudio,
-#battery {
-  padding: 0px 15px 0px 15px;
-}
-
-#clock {
-  margin: 0px 15px 0px 15px;
-}
-
 #tray {
-  padding: 0px 8px 0px 5px;
-  margin: 0px 5px 0px 5px;
+    color: #88c0d0;
+    padding: 0 10px;
+}
+
+#battery.warning {
+    color: #ebcb8b;
 }
 
 #battery.critical {
-  color: #ff5555;
+    color: #bf616a;
 }
 
 #network.disconnected {
-  color: #ff5555;
+    color: #bf616a;
+}
+
+#window,
+#workspaces {
+    margin: 0 4px;
+}
+
+button {
+    background: #2e3440;
+    color: #88c0d0;
+}
+
+button:hover {
+    background: #4c566a;
 }

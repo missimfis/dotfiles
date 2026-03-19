@@ -1,0 +1,15 @@
+#!/usr/bin/env zsh
+
+set -euo pipefail          # abort on errors, undefined vars, pipe failures
+IFS=$'\n\t'                # sane field splitting
+
+echo "📦 Updating official repos…"
+aura -Syu --noconfirm
+
+aura -Ayu --noconfirm
+
+cargo install-update --all
+
+sudo freshclam
+
+echo "✅ System update completed!"!/bin/zsh

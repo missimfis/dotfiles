@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # -------------------------------------------------------------
 # compact‑suckless‑install.sh – Artix Linux (dinit) + Xorg
 # -------------------------------------------------------------
@@ -10,20 +10,23 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ---------- 0.  USER‑CONFIG -------------------------------------------------
-SRC_ROOT="${HOME}/src"               # where the repos will live
+SRC_ROOT="${HOME}/src"              # where the repos will live
 PROGS=(dwm st dmenu slstatus slock) # suckless tools to build
 PICOM_REPO="https://github.com/yshui/picom.git"
 # -------------------------------------------------------------
 
-msg(){ printf "\e[1;34m▶ %s\e[0m\n" "$*"; }
-err(){ printf "\e[1;31m✖ %s\e[0m\n" "$*" >&2; exit 1; }
+msg() { printf "\e[1;34m▶ %s\e[0m\n" "$*"; }
+err() {
+	printf "\e[1;31m✖ %s\e[0m\n" "$*" >&2
+	exit 1
+}
 
 # ---------- 1.  Install build deps -----------------------------------------
 BUILD_DEPS=(
-    base-devel libX11-devel libXft-devel libXinerama-devel libXrandr-devel
-    libXext-devel libXrender-devel freetype2-devel libxcb-devel
-    libXdamage-devel libXcomposite-devel libXfixes-devel libXcursor-devel
-    libev-devel libdrm-devel libGL-devel dbus-devel git sudo
+	base-devel libX11-devel libXft-devel libXinerama-devel libXrandr-devel
+	libXext-devel libXrender-devel freetype2-devel libxcb-devel
+	libXdamage-devel libXcomposite-devel libXfixes-devel libXcursor-devel
+	libev-devel libdrm-devel libGL-devel dbus-devel git sudo
 )
 msg "Installing build dependencies…"
 sudo pacman -Sy --needed "${BUILD_DEPS[@]}"
@@ -34,16 +37,16 @@ cd "${SRC_ROOT}"
 
 # ---------- 3.  Clone / update suckless repos -------------------------------
 for p in "${PROGS[@]}"; do
-    if [[ -d "${p}" ]]; then
-        (cd "${p}" && git pull --rebase --quiet)
-    else
-        git clone "https://git.suckless.org/${p}" "${p}"
-    fi
+	if [[ -d "${p}" ]]; then
+		(cd "${p}" && git pull --rebase --quiet)
+	else
+		git clone "https://git.suckless.org/${p}" "${p}"
+	fi
 done
 
 # ---------- 4.  Minimal configs (edit if you like) -------------------------
 # dwm
-cat > dwm/config.h <<'EOF'
+cat >dwm/config.h <<'EOF'
 #include <X11/XF86keysym.h>
 static const unsigned int borderpx = 2, snap = 32;
 static const int showbar = 1, topbar = 1;
@@ -84,7 +87,7 @@ static const Key keys[] = {
 EOF
 
 # st
-cat > st/config.h <<'EOF'
+cat >st/config.h <<'EOF'
 static const char *font = "monospace:size=10";
 static const char *termname = "st";
 static const char *shell = "/bin/bash";
@@ -96,7 +99,7 @@ static unsigned int cols = 80, rows = 24;
 EOF
 
 # dmenu
-cat > dmenu/config.h <<'EOF'
+cat >dmenu/config.h <<'EOF'
 static const char *fonts[] = {"monospace:size=10"};
 static const char *normbgcolor = "#222222", *normfgcolor = "#bbbbbb";
 static const char *selbgcolor  = "#005577", *selfgcolor  = "#eeeeee";
@@ -104,7 +107,7 @@ static const unsigned int lines = 0, min_width = 500;
 EOF
 
 # slstatus
-cat > slstatus/config.h <<'EOF'
+cat >slstatus/config.h <<'EOF'
 static const struct arg args[] = {
     {"  %s ", "battery_percent"},
     {"  %s ", "wifi_essid"},
@@ -114,23 +117,23 @@ EOF
 # -------------------------------------------------------------
 
 # ---------- 5.  Build & install each suckless program --------------------
-install_prog(){
-    local dir=$1
-    cd "${SRC_ROOT}/${dir}"
-    msg "Building ${dir}…"
-    make clean >/dev/null 2>&1 || true
-    make -j$(nproc)
-    msg "Installing ${dir}…"
-    sudo make install
+install_prog() {
+	local dir=$1
+	cd "${SRC_ROOT}/${dir}"
+	msg "Building ${dir}…"
+	make clean >/dev/null 2>&1 || true
+	make -j$(nproc)
+	msg "Installing ${dir}…"
+	sudo make install
 }
 for p in "${PROGS[@]}"; do install_prog "$p"; done
 
 # ---------- 6.  Build & install picom (tiny compositor) -----------------
 msg "Cloning picom…"
 if [[ -d picom ]]; then
-    (cd picom && git pull --rebase --quiet)
+	(cd picom && git pull --rebase --quiet)
 else
-    git clone "${PICOM_REPO}"
+	git clone "${PICOM_REPO}"
 fi
 cd picom
 msg "Configuring picom (meson)…"
@@ -191,7 +194,7 @@ EndSection
 EOF
 
 # ---------- 9.  User .xinitrc (launches dwm, ensures picom fallback) --
-cat > "${HOME}/.xinitrc" <<'EOF'
+cat >"${HOME}/.xinitrc" <<'EOF'
 #!/usr/bin/env sh
 # start picom if dinit hasn't already done it
 pgrep -x picom >/dev/null || picom --config /etc/picom.conf &
