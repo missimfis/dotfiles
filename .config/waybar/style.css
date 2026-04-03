@@ -1,8 +1,8 @@
-/* Nord Theme - Blue Accent */
+/* Nord Theme - Full Status Bar */
 
 * {
-    font-family: "JetBrains Nerd Font", "Font Awesome 6 Free";
-    font-size: 13px;
+    font-family: "Hurmit Nerd Font Mono", "Hurmit Nerd Font Propo", monospace;
+    font-size: 14px;
     border: none;
 }
 
@@ -33,6 +33,7 @@ tooltip label {
     background: #2e3440;
 }
 
+/* Workspaces */
 #workspaces {
     margin-right: 6px;
 }
@@ -41,8 +42,8 @@ tooltip label {
     color: #81a1c1;
     padding: 0 8px;
     min-width: 26px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
+    border-radius: 4px;
+    transition: all 0.15s ease;
 }
 
 #workspaces button.active {
@@ -60,39 +61,78 @@ tooltip label {
     color: #eceff4;
 }
 
+/* Window title */
+#window {
+    color: #d8dee9;
+    margin: 0 8px;
+}
+
+/* All modules */
 #clock,
 #battery,
 #cpu,
 #memory,
+#disk,
 #network,
 #backlight,
+#temperature,
+#custom-vol,
+#custom-keyboard,
+#custom-mediaplayer,
 #tray {
     color: #88c0d0;
-    padding: 0 10px;
+    padding: 0 8px;
 }
 
+/* Status colors */
 #battery.warning {
     color: #ebcb8b;
 }
 
 #battery.critical {
     color: #bf616a;
+    animation: blink 1s infinite;
 }
 
 #network.disconnected {
     color: #bf616a;
 }
 
-#window,
-#workspaces {
-    margin: 0 4px;
+#temperature.critical {
+    color: #bf616a;
+}
+
+/* CPU/Memory warning */
+#cpu.warning,
+#memory.warning {
+    color: #ebcb8b;
+}
+
+/* Tooltips */
+#battery:hover,
+#cpu:hover,
+#memory:hover,
+#disk:hover,
+#network:hover,
+#temperature:hover,
+#backlight:hover,
+#custom-vol:hover,
+#clock:hover {
+    background: #3b4252;
+    border-radius: 4px;
+}
+
+/* Animations */
+@keyframes blink {
+    50% { color: #bf616a; background: #4c566a; }
 }
 
 button {
-    background: #2e3440;
+    background: transparent;
     color: #88c0d0;
 }
 
 button:hover {
     background: #4c566a;
+    color: #d8dee9;
 }

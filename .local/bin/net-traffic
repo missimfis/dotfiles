@@ -1,0 +1,38 @@
+#!/usr/bin/env zsh
+# Network traffic monitor for waybar
+# Usage: net-traffic [interface]
+
+INTERFACE="${1:-wlan0}"
+PREV_FILE="/tmp/net_traffic_${INTERFACE}"
+
+read_stats() {
+    cat /proc/net/dev | grep "$INTERFACE" | awk '{print $2, $10}'
+}
+
+get_speed() {
+    read current
+    if [[ -f "$PREV_FILE" ]]; then
+        read prev < "$PREV_FILE"
+        curr_rx=${current%% *}
+        curr_tx=${current##* }
+        prev_rx=${prev%% *}
+        prev_tx=${prev##* }
+        
+        rx_rate=$((curr_rx - prev_rx))
+        tx_rate=$((curr_tx - prev_tx))
+        
+        if [[ $rx_rate -gt 1048576 ]]; then
+            printf "⬇ %.1fM ⬆ %.1fM" $((rx_rate / 1048576)) $((tx_rate / 1048576))
+        elif [[ $rx_rate -gt 1024 ]]; then
+            printf "⬇ %.0fK ⬆ %.0fK" $((rx_rate / 1024)) $((tx_rate / 1024))
+        else
+            printf "⬇ %dB ⬆ %dB" $rx_rate $tx_rate
+        fi
+    fi
+    echo "$current" > "$PREV_FILE"
+}
+
+while true; do
+    get_speed < <(read_stats)
+    sleep 1
+done

@@ -1,0 +1,68 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+IFS=$'\n\t'
+
+log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M')" "$*"; }
+die() { log "ERROR: $*"; exit 1; }
+
+REPO_PATH="${HOME}/extData/backup/borg"
+SRC_DIRS=( "${HOME}/.config" "${HOME}/.local" "${HOME}/.zshrc" "${HOME}/.tmux.conf" "${HOME}/.gitconfig" )
+EXCLUDE_FILE="${HOME}/.config/backup/excludes"
+
+LOCKFILE="/tmp/backup.lock"
+
+cleanup() { rm -f "$LOCKFILE"; }
+trap cleanup EXIT
+
+[[ -e "$LOCKFILE" ]] && die "Backup already running"
+touch "$LOCKFILE"
+
+mkdir -p "$REPO_PATH"
+mkdir -p "$(dirname "$EXCLUDE_FILE")"
+
+[[ -f "$EXCLUDE_FILE" ]] || cat >"$EXCLUDE_FILE" <<'EOF'
+.cargo/git/db
+.cargo/registry/index
+.cargo/registry/cache
+.target
+node_modules
+.git
+.cache
+.thumbnails
+*.tmp
+*.log
+EOF
+
+init_repo() {
+    if [[ -z "${BORG_PASSPHRASE:-}" ]]; then
+        log "BORG_PASSPHRASE not set - using repokey mode"
+        borg init --encryption=repokey "$REPO_PATH"
+    else
+        borg init --encryption=authenticated "$REPO_PATH"
+    fi
+}
+
+if ! borg list "$REPO_PATH" &>/dev/null; then
+    log "Initializing borg repository at $REPO_PATH"
+    init_repo
+fi
+
+BACKUP_NAME="backup-$(date +%Y%m%d-%H%M)"
+log "Starting backup: $BACKUP_NAME"
+
+borg create \
+    --compression lz4 \
+    --exclude-from "$EXCLUDE_FILE" \
+    --progress \
+    "$REPO_PATH::$BACKUP_NAME" \
+    "${SRC_DIRS[@]}"
+
+log "Pruning old backups..."
+borg prune \
+    --keep-daily=7 \
+    --keep-weekly=4 \
+    --keep-monthly=6 \
+    "$REPO_PATH"
+
+log "Backup complete!"
+log "Run 'borg list $REPO_PATH' to see backups"

@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+case "${1:-}" in
+    get)
+        layout=$(swaymsg -r -t get_inputs 2>/dev/null | jq -r '.[] | select(.type=="keyboard") | .xkb_layout' 2>/dev/null | head -1)
+        case "$layout" in
+            us) echo "US" ;;
+            ch) echo "CH" ;;
+            de) echo "DE" ;;
+            "") echo "--" ;;
+            null) echo "--" ;;
+            *) echo "$layout" ;;
+        esac
+        ;;
+    next)
+        swaymsg input type:keyboard xkb_switch_layout next 2>/dev/null
+        ;;
+    *) ~/bin/kblayout get ;;
+esac

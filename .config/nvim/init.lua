@@ -2,44 +2,56 @@
 
 vim.loader.enable()
 
+-- Leader keys MUST be set before loading plugins
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Core options
-vim.opt.expandtab = true
-vim.opt.shiftwidth = 2
-vim.opt.tabstop = 2
-vim.opt.smartindent = true
-vim.opt.mouse = 'a'
-vim.opt.clipboard = 'unnamedplus'
-vim.opt.relativenumber = true
-vim.opt.number = true
-vim.opt.showmode = false
-vim.opt.showcmd = false
-vim.opt.ruler = false
-vim.opt.cmdheight = 1
-vim.opt.laststatus = 2
-vim.opt.signcolumn = 'yes:1'
-vim.opt.scrolloff = 4
-vim.opt.sidescrolloff = 8
-vim.opt.wrap = false
-vim.opt.cursorline = true
-vim.opt.termguicolors = true
-vim.opt.timeoutlen = 200
-vim.opt.updatetime = 100
-vim.opt.redrawtime = 1500
+local opt = vim.opt
+opt.expandtab = true
+opt.shiftwidth = 2
+opt.tabstop = 2
+opt.smartindent = true
+opt.mouse = 'a'
+opt.clipboard = 'unnamedplus'
+opt.relativenumber = true
+opt.number = true
+opt.showmode = false
+opt.showcmd = false
+opt.ruler = false
+opt.cmdheight = 1
+opt.laststatus = 3
+opt.signcolumn = 'yes:1'
+opt.scrolloff = 8
+opt.sidescrolloff = 8
+opt.wrap = false
+opt.cursorline = true
+opt.termguicolors = true
+opt.timeoutlen = 300
+opt.updatetime = 200
+opt.redrawtime = 1500
+opt.hidden = true
+opt.backup = false
+opt.writebackup = false
+opt.swapfile = false
+opt.undofile = true
+opt.undolevels = 10000
+opt.splitbelow = true
+opt.splitright = true
+opt.completeopt = { 'menu', 'menuone', 'noselect' }
+opt.pumheight = 10
+opt.shortmess:append('cI')
+opt.fillchars = { eob = ' ' }
 
--- Disable heavy features
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
-vim.g.loaded_gzip = 1
-vim.g.loaded_zipPlugin = 1
-vim.g.loaded_tarPlugin = 1
-vim.g.loaded_2html_plugin = 1
-vim.g.loaded_getscript = 1
-vim.g.loaded_spellfile_plugin = 1
-vim.g.loaded_matchit = 1
-vim.g.loaded_matchparen = 1
+-- Disable built-in plugins for speed
+local disabled = {
+  'netrw', 'netrwPlugin', 'gzip', 'zipPlugin', 'tarPlugin',
+  '2html_plugin', 'getscript', 'spellfile_plugin', 'matchit',
+  'matchparen', 'tohtml', 'tutor_mode_plugin',
+}
+for _, plugin in ipairs(disabled) do
+  vim.g['loaded_' .. plugin] = 1
+end
 vim.g.loaded_python_provider = 0
 vim.g.loaded_python3_provider = 0
 vim.g.loaded_node_provider = 0

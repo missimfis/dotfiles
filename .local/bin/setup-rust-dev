@@ -1,0 +1,52 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+IFS=$'\n\t'
+
+msg() { printf '\e[1;34m▶ %s\e[0m\n' "$*"; }
+err() { printf '\e[1;31m✖ %s\e[0m\n' "$*" >&2; exit 1; }
+
+msg "Installing Rust..."
+if ! command -v rustup >/dev/null; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source "$HOME/.cargo/env"
+fi
+
+msg "Configuring Rust..."
+rustup default stable
+rustup update stable
+
+msg "Installing essential Cargo tools..."
+cargo install \
+    cargo-watch \
+    cargo-edit \
+    cargo-audit \
+    cargo-outdated \
+    bat \
+    eza \
+    fd-find \
+    ripgrep \
+    --locked 2>/dev/null || true
+
+msg "Installing web frameworks (optional)..."
+cargo install \
+    cargo-leptos \
+    cargo-yew 2>/dev/null || true
+
+msg "Installing dev tools..."
+PKGS=(postgresql-libs sqlite libpq openssl pkgconf)
+for p in "${PKGS[@]}"; do
+    aura -S --noconfirm "$p" 2>/dev/null || true
+done
+
+if ! command -v podman >/dev/null; then
+    msg "Installing podman..."
+    aura -A --noconfirm podman 2>/dev/null || true
+fi
+
+msg "Rust dev environment ready!"
+echo ""
+echo "Useful commands:"
+echo "  cargo watch -x run      # Auto-rebuild and run"
+echo "  cargo add <crate>       # Add dependencies"
+echo "  cargo outdated          # Check for updates"
+echo "  cargo audit            # Security audit"

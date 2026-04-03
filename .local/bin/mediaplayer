@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+# Media player status for waybar
+
+playerctl -p spotify,firefox,chromium,mpv status 2>/dev/null | head -1 || echo ""

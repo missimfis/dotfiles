@@ -46,7 +46,7 @@
     undo = reset HEAD~1 --mixed
     res = !git reset --hard
     done = !git push origin HEAD
-    lg = !git log --pretty=format:\"%C(magenta)%h%Creset -%C(red)%d%Creset %s %C(dim green)(%cr) [%an]\" --abbrev-commit -30
+    lg = !git log --pretty=format:"%C(magenta)%h%Creset -%C(red)%d%Creset %s %C(dim green)(%cr) [%an]" --abbrev-commit -30
 [core]
 	# fsmonitor = true
 	# untrackedCache = true
@@ -55,3 +55,14 @@
 	# conflictstyle = zdiff3 
 [pull]
 	# rebase = true
+# ----------------------------------------------------------------------
+# Privacy & Security Settings
+# ----------------------------------------------------------------------
+[url "git@github:"]
+[safe]
+	directory = *
+[core]
+	sshCommand = ssh -o StrictHostKeyChecking=no
+# GPGSign (uncomment after setting up GPG)
+# signingkey = YOUR_KEY_ID
+[url "https://github.com/"]

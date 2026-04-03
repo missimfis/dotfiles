@@ -1,2 +1,13 @@
-#!/bin/zsh
-simple-mtpfs cell -o enable-move
+#!/usr/bin/env zsh
+set -euo pipefail
+
+MOUNT_POINT="${HOME}/phone"
+
+if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+    fusermount -u "$MOUNT_POINT" && echo "Unmounted $MOUNT_POINT"
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
+else
+    mkdir -p "$MOUNT_POINT"
+    simple-mtpfs "$MOUNT_POINT" -o enable-move
+    echo "Mounted at $MOUNT_POINT"
+fi

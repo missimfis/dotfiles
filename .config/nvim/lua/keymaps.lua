@@ -1,26 +1,24 @@
 -- keymaps.lua - Minimal Fast Keymaps
 
-local nmap = function(lhs, rhs, desc)
-  vim.keymap.set('n', lhs, rhs, { desc = desc, silent = true })
-end
-local imap = function(lhs, rhs, desc)
-  vim.keymap.set('i', lhs, rhs, { desc = desc, silent = true })
-end
-local vmap = function(lhs, rhs, desc)
-  vim.keymap.set('v', lhs, rhs, { desc = desc, silent = true })
-end
+local map = vim.keymap.set
+local nmap = function(lhs, rhs, desc) map('n', lhs, rhs, { desc = desc, silent = true }) end
+local imap = function(lhs, rhs, desc) map('i', lhs, rhs, { desc = desc, silent = true }) end
+local vmap = function(lhs, rhs, desc) map('v', lhs, rhs, { desc = desc, silent = true }) end
+local xmap = function(lhs, rhs, desc) map('x', lhs, rhs, { desc = desc, silent = true }) end
 
 -- Save/Quit
 nmap('<leader>w', '<cmd>update<CR>', 'Save')
 nmap('<leader>q', '<cmd>q<CR>', 'Quit')
 nmap('<leader>x', '<cmd>bd<CR>', 'Delete buffer')
 
+-- Explorer
+nmap('<leader>e', '<cmd>Oil<CR>', 'File explorer')
+
 -- Windows
 nmap('<C-h>', '<cmd>wincmd h<CR>', 'Left')
 nmap('<C-j>', '<cmd>wincmd j<CR>', 'Down')
 nmap('<C-k>', '<cmd>wincmd k<CR>', 'Up')
 nmap('<C-l>', '<cmd>wincmd l<CR>', 'Right')
-nmap('<C-w>', '<cmd>wincmd w<CR>', 'Next')
 
 -- Tabs
 nmap('<leader>tn', '<cmd>tabnew<CR>', 'New tab')
@@ -40,54 +38,53 @@ nmap('<leader>fh', '<cmd>FzfLua help_tags<CR>', 'Help')
 nmap('<leader>fc', '<cmd>FzfLua colorscheme<CR>', 'Colorscheme')
 nmap('<leader>fr', '<cmd>FzfLua resume<CR>', 'Resume')
 
--- LSP
-nmap('gd', vim.lsp.buf.definition, 'Definition')
-nmap('gr', vim.lsp.buf.references, 'References')
-nmap('K', vim.lsp.buf.hover, 'Hover')
-nmap('<leader>rn', vim.lsp.buf.rename, 'Rename')
-nmap('<leader>ca', vim.lsp.buf.code_action, 'Code action')
-nmap(']d', vim.diagnostic.goto_next, 'Next diagnostic')
-nmap('[d', vim.diagnostic.goto_prev, 'Prev diagnostic')
-nmap('<leader>rf', function() require('conform').format({ async = true }) end, 'Format')
+-- LSP (set via LspAttach autocmd for buffer-local safety)
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = vim.api.nvim_create_augroup('UserLspKeymaps', { clear = true }),
+  callback = function(ev)
+    local buf = function(lhs, rhs, d) map('n', lhs, rhs, { buffer = ev.buf, desc = d, silent = true }) end
+    buf('gd', vim.lsp.buf.definition, 'Definition')
+    buf('gr', vim.lsp.buf.references, 'References')
+    buf('K', vim.lsp.buf.hover, 'Hover')
+    buf('<leader>rn', vim.lsp.buf.rename, 'Rename')
+    buf('<leader>ca', vim.lsp.buf.code_action, 'Code action')
+    buf(']d', vim.diagnostic.goto_next, 'Next diagnostic')
+    buf('[d', vim.diagnostic.goto_prev, 'Prev diagnostic')
+    buf('<leader>rf', function() require('conform').format({ async = true, bufnr = ev.buf }) end, 'Format')
+    buf('gi', vim.lsp.buf.implementation, 'Implementation')
+    buf('<leader>d', vim.diagnostic.open_float, 'Line diagnostics')
+  end,
+})
 
 -- Search
 nmap('n', 'nzzzv', 'Next search')
 nmap('N', 'Nzzzv', 'Prev search')
 nmap('<leader><space>', '<cmd>noh<CR>', 'Clear highlights')
 
--- Move
-vmap('J', ":m '>+1<CR>gv=gv", 'Move down')
-vmap('K', ":m '<-2<CR>gv=gv", 'Move up')
-vmap('<', '<gv', 'Indent left')
-vmap('>', '>gv', 'Indent right')
+-- Move lines (visual mode)
+xmap('J', ":m '>+1<CR>gv=gv", 'Move down')
+xmap('K', ":m '<-2<CR>gv=gv", 'Move up')
+xmap('<', '<gv', 'Indent left')
+xmap('>', '>gv', 'Indent right')
 
 -- Quick escape
 imap('jk', '<Esc>', 'Escape')
 imap('kj', '<Esc>', 'Escape')
 
--- Leap motions
-nmap('s', '<cmd>Leap<CR>', 'Leap')
-nmap('S', '<cmd>LeapFromWindow<CR>', 'Leap from window')
+-- Leap motions (use gs/gS to avoid conflicting with vim-surround)
+nmap('gs', '<cmd>Leap<CR>', 'Leap')
+nmap('gS', '<cmd>LeapFromWindow<CR>', 'Leap from window')
 
 -- Git
 nmap('<leader>gd', '<cmd>Git diff<CR>', 'Git diff')
 nmap('<leader>gc', '<cmd>Git commit<CR>', 'Git commit')
 nmap('<leader>gp', '<cmd>Git push<CR>', 'Git push')
 
--- Clipboard
-nmap('gy', '"+y', 'Yank to clipboard')
-nmap('gp', '"+p', 'Paste from clipboard')
-vmap('gy', '"+y', 'Yank to clipboard')
-vmap('gp', '"+p', 'Paste from clipboard')
+-- Clipboard (visual mode only to avoid gp conflict)
+xmap('gy', '"+y', 'Yank to clipboard')
+xmap('gP', '"+P', 'Paste from clipboard')
+nmap('gY', '"+y', 'Yank to clipboard')
+nmap('gP', '"+P', 'Paste from clipboard')
 
 -- Misc
-nmap('<leader>ot', function()
-  vim.cmd([[%s/\s\+$//e]])
-end, 'Trim trailing space')
-
-vim.cmd([[
-  augroup FastStartup
-    autocmd!
-    autocmd User LazyDone ++once lua require('lualine').setup({ options = { theme = 'nord' } })
-  augroup END
-]])
+nmap('<leader>ot', function() vim.cmd([[%s/\s\+$//e]]) end, 'Trim trailing space')

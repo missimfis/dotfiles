@@ -1,66 +1,144 @@
--- plugin.lua - Minimal Lazy Config
+-- plugin.lua - Minimal Fast Lazy Config
 
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({ 'git', 'clone', '--filter=blob:none', '--single-branch', 'https://github.com/folke/lazy.nvim.git', lazypath })
 end
 vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup({
-  -- Colorscheme
-  { 'shaunsingh/nord.nvim', priority = 1000 },
+  -- Colorscheme (load first)
+  { 'shaunsingh/nord.nvim', priority = 1000, lazy = false },
 
-  -- Fuzzy finder (uses system fzf)
-  { 'ibhagwan/fzf-lua', dependencies = 'nvim-web-devicons' },
+  -- File explorer
+  { 'stevearc/oil.nvim', cmd = 'Oil', config = function() require('oil').setup({ default_file_explorer = true }) end },
+
+  -- Fuzzy finder
+  { 'ibhagwan/fzf-lua', cmd = { 'FzfLua' }, dependencies = 'nvim-web-devicons',
+    config = function() require('fzf-lua').setup({}) end,
+  },
 
   -- LSP
-  { 'neovim/nvim-lspconfig' },
-  { 'williamboman/mason.nvim' },
-  { 'williamboman/mason-lspconfig.nvim' },
-  { 'stevearc/conform.nvim' },
+  { 'neovim/nvim-lspconfig', event = { 'BufReadPre', 'BufNewFile' } },
+  { 'williamboman/mason.nvim', cmd = 'Mason' },
+  { 'williamboman/mason-lspconfig.nvim', dependencies = { 'mason.nvim', 'nvim-lspconfig' } },
+  { 'stevearc/conform.nvim', event = 'BufWritePre' },
 
-  -- Treesitter
+  -- Treesitter (v1.0+ - highlighting/indent automatic via Neovim)
   {
     'nvim-treesitter/nvim-treesitter',
+    lazy = false,
     build = ':TSUpdate',
     config = function()
-      require('nvim-treesitter.configs').setup({
-        ensure_installed = { 'lua', 'vim', 'vimdoc', 'bash', 'python', 'javascript', 'typescript', 'html', 'css', 'json', 'yaml', 'markdown' },
-        sync_install = false,
-        auto_install = true,
-        highlight = { enable = true },
-        indent = { enable = true },
+      require('nvim-treesitter').setup()
+      local needed = { 'lua', 'bash', 'python', 'javascript', 'typescript', 'html', 'css', 'json', 'yaml', 'markdown', 'vim', 'vimdoc', 'diff', 'gitcommit', 'git_rebase' }
+      local installed = require('nvim-treesitter.config').get_installed('parsers')
+      local to_install = vim.tbl_filter(function(l) return not vim.list_contains(installed, l) end, needed)
+      if #to_install > 0 then
+        require('nvim-treesitter.install').install(to_install, { summary = true })
+      end
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('TreesitterStart', { clear = true }),
+        callback = function(ev)
+          pcall(vim.treesitter.start, ev.buf)
+        end,
       })
     end,
   },
 
-  -- Essentials
-  { 'tpope/vim-surround' },
-  { 'tpope/vim-commentary' },
-  { 'tpope/vim-unimpaired' },
-  { 'tpope/vim-repeat' },
-  { 'tpope/vim-eunuch' },
-  { 'tpope/vim-sleuth' },
-  { 'tpope/vim-projectionist' },
-  { 'AndrewRadev/switch.vim' },
-  { 'AndrewRadev/sideways.vim' },
+  -- Essentials (vim-surround needs to load immediately for s/S mappings)
+  { 'tpope/vim-surround', event = 'VeryLazy' },
+  { 'tpope/vim-commentary', event = 'VeryLazy' },
+  { 'tpope/vim-unimpaired', event = 'VeryLazy' },
+  { 'tpope/vim-repeat', event = 'VeryLazy' },
+  { 'tpope/vim-eunuch', cmd = { 'Delete', 'Move', 'Chmod', 'Mkdir', 'Rename' } },
+  { 'tpope/vim-sleuth', event = { 'BufReadPost', 'BufNewFile' } },
+  { 'tpope/vim-projectionist', event = 'VeryLazy' },
+  { 'AndrewRadev/switch.vim', cmd = 'Switch' },
+  { 'AndrewRadev/sideways.vim', event = 'VeryLazy' },
 
   -- Git
-  { 'lewis6991/gitsigns.nvim', dependencies = 'nvim-lua/plenary.nvim' },
+  {
+    'lewis6991/gitsigns.nvim',
+    event = { 'BufReadPre', 'BufNewFile' },
+    config = function()
+      require('gitsigns').setup({ signcolumn = false, numhl = true })
+    end,
+  },
 
   -- Completion
-  { 'hrsh7th/nvim-cmp', dependencies = 'hrsh7th/cmp-nvim-lsp' },
-  { 'hrsh7th/cmp-buffer' },
-  { 'hrsh7th/cmp-path' },
-  { 'hrsh7th/cmp-cmdline' },
-  { 'L3MON4D3/LuaSnip' },
-  { 'saadparwaiz1/cmp_luasnip' },
+  {
+    'hrsh7th/nvim-cmp',
+    event = { 'InsertEnter', 'CmdlineEnter' },
+    dependencies = {
+      'hrsh7th/cmp-nvim-lsp',
+      'hrsh7th/cmp-buffer',
+      'hrsh7th/cmp-path',
+      'hrsh7th/cmp-cmdline',
+      'L3MON4D3/LuaSnip',
+      'saadparwaiz1/cmp_luasnip',
+    },
+    config = function()
+      local cmp = require('cmp')
+      cmp.setup({
+        snippet = {
+          expand = function(args) require('luasnip').lsp_expand(args.body) end,
+        },
+        mapping = cmp.mapping.preset.insert({
+          ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+          ['<C-f>'] = cmp.mapping.scroll_docs(4),
+          ['<C-Space>'] = cmp.mapping.complete(),
+          ['<C-e>'] = cmp.mapping.abort(),
+          ['<CR>'] = cmp.mapping.confirm({ select = false }),
+        }),
+        sources = cmp.config.sources({
+          { name = 'nvim_lsp' },
+          { name = 'luasnip' },
+        }, {
+          { name = 'buffer' },
+          { name = 'path' },
+        }),
+        performance = {
+          debounce = 60,
+          throttle = 30,
+          fetching_timeout = 500,
+        },
+      })
+      cmp.setup.cmdline(':', {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = cmp.config.sources({ { name = 'path' } }, { { name = 'cmdline' } }),
+      })
+    end,
+  },
 
-  -- Motion
-  { 'ggandor/leap.nvim', dependencies = 'tpope/vim-repeat' },
+  -- Motion (load on keys to avoid startup cost)
+  { 'ggandor/leap.nvim', keys = { 'gs', 'gS' } },
 
   -- UI
-  { 'nvim-lualine/lualine.nvim', dependencies = 'nvim-tree/nvim-web-devicons' },
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    event = 'VeryLazy',
+    config = function()
+      require('lualine').setup({
+        options = {
+          theme = 'nord',
+          component_separators = '',
+          section_separators = '',
+          globalstatus = true,
+        },
+      })
+    end,
+  },
+}, {
+  performance = {
+    rtp = {
+      disabled_plugins = {
+        'gzip', 'matchit', 'netrwPlugin', 'tarPlugin', 'tohtml',
+        'tutor', 'zipPlugin', 'rplugin',
+      },
+    },
+  },
 })
 
 -- LSP Config
@@ -69,13 +147,22 @@ vim.diagnostic.config({
   underline = true,
   signs = true,
   update_in_insert = false,
+  severity_sort = true,
 })
 
+-- Mason
+require('mason').setup({ log_level = vim.log.levels.WARN })
+require('mason-lspconfig').setup({
+  ensure_installed = { 'lua_ls', 'pyright', 'ruff', 'ts_ls', 'gopls', 'rust_analyzer' },
+  automatic_installation = true,
+})
+
+-- LSP capabilities (set globally so all servers pick it up)
 vim.lsp.config('*', {
   capabilities = require('cmp_nvim_lsp').default_capabilities(),
   on_attach = function(client, bufnr)
     if client.supports_method('textDocument/inlayHint') then
-      vim.lsp.inlay_hint.enable(bufnr, true)
+      vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
     end
   end,
 })
@@ -94,30 +181,8 @@ require('conform').setup({
     go = { 'gofmt' },
     rust = { 'rustfmt' },
   },
-})
-
--- Treesitter context - disable for performance
-vim.g.treesitter_context_max_lines = 0
-
--- Lualine
-require('lualine').setup({
-  options = {
-    theme = 'nord',
-    component_separators = '',
-    section_separators = '',
-    globalstatus = true,
+  format_on_save = {
+    timeout_ms = 1000,
+    lsp_format = 'fallback',
   },
 })
-
--- Mason
-require('mason').setup({ log_level = vim.log.levels.WARN })
-require('mason-lspconfig').setup({
-  ensure_installed = { 'lua_ls', 'pyright', 'ruff', 'ts_ls', 'gopls', 'rust_analyzer' },
-  automatic_installation = true,
-})
-
--- Gitsigns
-require('gitsigns').setup({ signcolumn = false, numhl = false })
-
--- Leap
-require('leap').add_default_mappings()
