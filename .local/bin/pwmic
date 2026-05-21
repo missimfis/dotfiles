@@ -2,7 +2,7 @@
 set -euo pipefail
 
 case "${1:-}" in
-    ls) wpctl inspect Client | grep -E 'Client [0-9]+:' ;;
+    ls) wpctl status | grep -E 'PipeWire|Audio|Video' | head -20 ;;
     mute) wpctl set-source-mute @DEFAULT_AUDIO_SOURCE@ toggle ;;
     get) wpctl get-source-volume @DEFAULT_AUDIO_SOURCE@ ;;
     *) wpctl get-source-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null | awk '{print int($2*100)"%"}' ;;

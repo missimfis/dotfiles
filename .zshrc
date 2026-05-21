@@ -145,5 +145,7 @@ bindkey '^ ' autosuggest-accept
 
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-# Zcompile for faster startup
-[[ -f "$HOME/.zshrc" ]] && zcompile ~/.zshrc 2>/dev/null
+# Zcompile for faster startup (only when source is newer)
+local zshrc="$HOME/.zshrc"
+local zwc="${zshrc}.zwc"
+[[ "$zshrc" -nt "$zwc" ]] && zcompile "$zshrc" 2>/dev/null
