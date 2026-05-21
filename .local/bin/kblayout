@@ -16,5 +16,5 @@ case "${1:-}" in
     next)
         swaymsg input type:keyboard xkb_switch_layout next 2>/dev/null
         ;;
-    *) ~/bin/kblayout get ;;
+    *) "${0}" get ;;
 esac

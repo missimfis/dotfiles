@@ -1,1 +1,7 @@
-ssh cathere@nanny25.ch
+#!/usr/bin/env zsh
+# SSH to nanny25.ch
+# BETTER: add to ~/.ssh/config:
+#   Host nanny25
+#     HostName nanny25.ch
+#     User cathere
+exec ssh cathere@nanny25.ch

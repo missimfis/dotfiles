@@ -1,2 +1,5 @@
-cd ~/Dokumente/code/djangoprojekte/
+#!/usr/bin/env zsh
+set -euo pipefail
+
+cd ~/Dokumente/code/djangoprojekte/ || exit
 rsync -av ~/Dokumente/code/djangoprojekte/mysite/web/ cathere@nanny25.ch:djangoprojekte/mysite/web/

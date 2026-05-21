@@ -9,12 +9,12 @@ REPO_PATH="${HOME}/extData/backup/borg"
 SRC_DIRS=( "${HOME}/.config" "${HOME}/.local" "${HOME}/.zshrc" "${HOME}/.tmux.conf" "${HOME}/.gitconfig" )
 EXCLUDE_FILE="${HOME}/.config/backup/excludes"
 
-LOCKFILE="/tmp/backup.lock"
+LOCKFILE="${XDG_RUNTIME_DIR:-/tmp}/${USER}-backup.lock"
 
 cleanup() { rm -f "$LOCKFILE"; }
 trap cleanup EXIT
 
-[[ -e "$LOCKFILE" ]] && die "Backup already running"
+[[ -e "$LOCKFILE" ]] && die "Backup already running (${LOCKFILE})"
 touch "$LOCKFILE"
 
 mkdir -p "$REPO_PATH"

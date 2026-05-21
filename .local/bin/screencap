@@ -1,27 +1,33 @@
 #!/usr/bin/env zsh
+set -euo pipefail
 
-# record webcam and open it in sdl window
+cleanup() { kill %1 2>/dev/null || true; }
+trap cleanup EXIT
+
+# Record webcam in SDL window
 ffmpeg -v quiet -hide_banner \
   -re -video_size 640X480 -hwaccel vaapi -vaapi_device /dev/dri/renderD128 -i /dev/video0 \
   -vf 'format=nv12,hwupload' -c:v hevc_vaapi -f hevc - \
   | ffmpeg -v quiet -i - -f sdl2 - &
 
-# wait for webcam window to open
+# Wait for webcam window
 until swaymsg -t get_tree | grep 'pipe:' &>/dev/null; do
   sleep 0.5
 done
 
-# position webcam in the bottom right corner of screen using sway
+# Position webcam in bottom-right corner dynamically
+read -r scr_w scr_h <<<"$(swaymsg -t get_outputs -r | jq -r 'map(select(.focused)) | .[0] | "\(.rect.width) \(.rect.height)"')"
+webcam_x=$((scr_w - 340))
+webcam_y=$((scr_h - 260))
+
 swaymsg floating enable
 swaymsg resize set width 320 height 240
-swaymsg move position 1580 795
+swaymsg move position "${webcam_x:-1580}" "${webcam_y:-795}"
 swaymsg focus tiling
 
-#screencast
+# Screencast with HW encoding
 ffmpeg -format bgra -framerate 60 -f kmsgrab -thread_queue_size 1024 -i - \
   -f alsa -ac 2 -thread_queue_size 1024 -i hw:0 \
   -vf 'hwmap=derive_device=vaapi,scale_vaapi=w=1920:h=1080:format=nv12' \
   -c:v h264_vaapi -g 120 -b:v 3M -maxrate 3M -pix_fmt vaapi_vld -c:a aac -ab 96k -threads $(nproc) \
   output.mkv
-
-kill %1

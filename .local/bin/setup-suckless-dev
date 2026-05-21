@@ -71,7 +71,7 @@ if id -u "$(whoami)" = 0; then
 	if ! id "$DEVUSER" >/dev/null 2>&1; then
 		echo "Creating user $DEVUSER ..."
 		sudo useradd -m -s /bin/zsh "$DEVUSER"
-		echo "$DEVUSER ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/$DEVUSER
+		echo "$DEVUSER ALL=(ALL) NOPASSWD:ALL" | sudo tee "/etc/sudoers.d/$DEVUSER"
 	fi
 	echo "Switching to $DEVUSER for the rest of the install."
 	exec sudo -iu "$DEVUSER" "$0" "$@"
@@ -81,7 +81,8 @@ fi
 # 4. Clone dotfiles repo -------------------------------------------------
 # ----------------------------------------------------------------------
 DOTDIR=$HOME/.dotfiles
-REPO_URL="https://github.com/yourname/suckless-dotfiles.git" # <‑‑ replace with your own repo
+REPO_URL="${REPO_URL:-}" # Set via env or replace below
+[[ -z "$REPO_URL" ]] && { echo "ERROR: Set REPO_URL (e.g. 'export REPO_URL=https://github.com/yourname/suckless-dotfiles.git')" >&2; exit 1; }
 if [ -d "$DOTDIR" ]; then
 	echo "Dotfiles repo already exists – pulling latest changes."
 	(cd "$DOTDIR" && git pull --rebase)
@@ -129,7 +130,7 @@ build_suckless dmenu https://git.suckless.org/dmenu
 echo "Linking dotfiles..."
 ln -sf "$DOTDIR/.zshrc" "$HOME/.zshrc"
 ln -sf "$DOTDIR/.tmux.conf" "$HOME/.tmux.conf"
-ln -sf "$DOTDIR/.config/nvim/init.vim" "$HOME/.config/nvim/init.vim"
+ln -sf "$DOTDIR/.config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
 ln -sf "$DOTDIR/.Xresources" "$HOME/.Xresources"
 xrdb -merge "$HOME/.Xresources"
 

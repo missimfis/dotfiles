@@ -8,17 +8,16 @@ mkdir -p "$OUT_DIR"
 case "$MODE" in
     area)
         FILE="${OUT_DIR}/$(date +%Y%m%d-%H%M%S).png"
-        grim -g "$(slop -f '%x,%y,%w,%h')" "$FILE" && wl-copy < "$FILE"
-        notify-send "Screenshot saved" "$FILE"
+        GEOMETRY=$(slop -f '%x,%y,%w,%h' 2>/dev/null) || exit 1
+        grim -g "$GEOMETRY" "$FILE" && wl-copy < "$FILE" && notify-send "Screenshot saved" "$FILE"
         ;;
     screen)
         FILE="${OUT_DIR}/$(date +%Y%m%d-%H%M%S)-full.png"
-        grim "$FILE" && wl-copy < "$FILE"
-        notify-send "Screenshot saved" "$FILE"
+        grim "$FILE" && wl-copy < "$FILE" && notify-send "Screenshot saved" "$FILE"
         ;;
     copy)
-        grim -g "$(slop -f '%x,%y,%w,%h')" - | wl-copy
-        notify-send "Screenshot copied to clipboard"
+        GEOMETRY=$(slop -f '%x,%y,%w,%h' 2>/dev/null) || exit 1
+        grim -g "$GEOMETRY" - | wl-copy && notify-send "Screenshot copied to clipboard"
         ;;
     *) echo "Usage: screenshot [area|screen|copy]"; exit 1 ;;
 esac

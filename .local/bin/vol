@@ -6,8 +6,8 @@ SINK="@DEFAULT_AUDIO_SINK@"
 case "${1:-}" in
     up) wpctl set-volume "$SINK" +5% 2>/dev/null || true ;;
     down) wpctl set-volume "$SINK" -5% 2>/dev/null || true ;;
-    +([[:digit:]])*) wpctl set-volume "$SINK" +"${1#+}"% 2>/dev/null || true ;;
-    -([[:digit:]])*) wpctl set-volume "$SINK" "${1#-}"% 2>/dev/null || true ;;
+    <->) wpctl set-volume "$SINK" "${1}%" 2>/dev/null || true ;;
+    <->%) wpctl set-volume "$SINK" "${1}"% 2>/dev/null || true ;;
     mute) wpctl set-mute "$SINK" toggle 2>/dev/null || true ;;
     unmute) wpctl set-mute "$SINK" off 2>/dev/null || true ;;
     toggle) wpctl set-mute "$SINK" toggle 2>/dev/null || true ;;

@@ -4,8 +4,7 @@ set -euo pipefail
 case "${1:-}" in
     up) brightnessctl set +5% ;;
     down) brightnessctl set 5%- ;;
-    +([[:digit:]])%*) brightnessctl set "${1}" ;;
-    -([[:digit:]])%*) brightnessctl set "${1}" ;;
+    <->%*) brightnessctl set "${1}" ;;
     get) brightnessctl get ;;
     *) brightnessctl | grep -oP '(\d+)%' | head -1 ;;
 esac
