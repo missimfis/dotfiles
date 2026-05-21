@@ -1,0 +1,12 @@
+--smart-case
+--hidden
+--follow
+--glob=!.git/*
+
+--ignore-case
+--no-heading
+
+--color=line:13:meta:5:spinner:3:date:4
+
+--max-columns=150
+--max-columns-preview

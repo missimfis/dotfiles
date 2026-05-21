@@ -24,5 +24,9 @@
 .config/ironclaw/
 .config/ephoto/
 
+# Runtime state within tracked dirs
+.config/yt-x/recent.json
+.config/yt-x/yt-x.conf
+
 .local/bin/error.log
 *.log
