@@ -1,0 +1,28 @@
+# Cache / state / generated (do not track)
+.config/mpd/*
+.config/ncmpcpp/*
+.config/chromium/
+.config/dconf/
+.config/go/
+.config/psd/
+.config/btop/
+.config/htop/
+.config/mpv/
+.config/yarn/
+.config/backup/excludes
+.config/sysctl.conf
+.config/topgrade.toml
+.config/opencode/
+
+# App-generated configs (not hand-crafted)
+.config/GIMP/
+.config/Proton Mail/
+.config/borg/
+.config/keepassxc/
+.config/freeorion/
+.config/supertuxkart/
+.config/ironclaw/
+.config/ephoto/
+
+.local/bin/error.log
+*.log
