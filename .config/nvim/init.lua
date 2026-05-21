@@ -35,28 +35,22 @@ opt.backup = false
 opt.writebackup = false
 opt.swapfile = false
 opt.undofile = true
-opt.undolevels = 10000
+opt.undolevels = 100000
 opt.splitbelow = true
 opt.splitright = true
 opt.completeopt = { 'menu', 'menuone', 'noselect' }
 opt.pumheight = 10
 opt.shortmess:append('cI')
 opt.fillchars = { eob = ' ' }
+opt.spelllang = 'en'
+opt.iskeyword:append('-')
+opt.formatoptions:append('j')
+opt.whichwrap:append('<>[]hl')
+opt.startofline = false
+opt.sessionoptions = 'buffers,curdir,folds,help,tabpages,winsize'
+opt.viewoptions = 'buffers,curdir,folds,help,tabpages,winsize'
 
--- Disable built-in plugins for speed
-local disabled = {
-  'netrw', 'netrwPlugin', 'gzip', 'zipPlugin', 'tarPlugin',
-  '2html_plugin', 'getscript', 'spellfile_plugin', 'matchit',
-  'matchparen', 'tohtml', 'tutor_mode_plugin',
-}
-for _, plugin in ipairs(disabled) do
-  vim.g['loaded_' .. plugin] = 1
-end
-vim.g.loaded_python_provider = 0
-vim.g.loaded_python3_provider = 0
-vim.g.loaded_node_provider = 0
-vim.g.loaded_ruby_provider = 0
-vim.g.loaded_perl_provider = 0
+vim.g.markdown_fenced_languages = { 'ts=typescript', 'js=javascript', 'py=python', 'bash=sh' }
 
 require('keymaps')
 require('plugin')

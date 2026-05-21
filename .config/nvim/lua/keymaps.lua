@@ -79,6 +79,41 @@ nmap('gS', '<cmd>LeapFromWindow<CR>', 'Leap from window')
 nmap('<leader>gd', '<cmd>Git diff<CR>', 'Git diff')
 nmap('<leader>gc', '<cmd>Git commit<CR>', 'Git commit')
 nmap('<leader>gp', '<cmd>Git push<CR>', 'Git push')
+nmap('<leader>gh', '<cmd>DiffviewFileHistory<CR>', 'Git history')
+nmap('<leader>go', '<cmd>DiffviewOpen<CR>', 'Diffview open')
+
+-- Quickfix / Todo
+nmap(']q', '<cmd>cnext<CR>', 'Next quickfix')
+nmap('[q', '<cmd>cprev<CR>', 'Prev quickfix')
+nmap('<leader>qt', '<cmd>TodoFzfLua<CR>', 'Todo FzfLua')
+nmap('<leader>qT', '<cmd>TodoFzfLua keywords=TODO,FIX<CR>', 'Todos & Fixes')
+
+-- Session
+nmap('<leader>qs', '<cmd>wa<CR><cmd>SessionSave<CR>', 'Save session')
+nmap('<leader>ql', '<cmd>SessionLoad<CR>', 'Load session')
+
+-- Browse
+nmap('<leader>fl', '<cmd>FzfLua quickfix<CR>', 'Quickfix list')
+
+-- Database
+nmap('<leader>db', '<cmd>DBUI<CR>', 'Database UI')
+
+-- Debug (DAP)
+nmap('<leader>dt', '<cmd>DapToggleBreakpoint<CR>', 'Toggle breakpoint')
+nmap('<leader>dc', '<cmd>DapContinue<CR>', 'Debug continue')
+nmap('<leader>ds', '<cmd>DapStepOver<CR>', 'Step over')
+nmap('<leader>di', '<cmd>DapStepInto<CR>', 'Step into')
+nmap('<leader>do', '<cmd>DapStepOut<CR>', 'Step out')
+nmap('<leader>dr', '<cmd>DapRestart<CR>', 'Debug restart')
+nmap('<leader>dl', '<cmd>DapShowLog<CR>', 'Show debug log')
+nmap('<leader>de', '<cmd>DapUIEvaluate<CR>', 'Evaluate')
+nmap('<leader>dui', '<cmd>DapUI<CR>', 'DAP UI')
+
+-- Terminal
+nmap('<leader>tt', '<cmd>ToggleTerm<CR>', 'Toggle terminal')
+nmap('<leader>tf', '<cmd>ToggleTerm direction=float<CR>', 'Terminal float')
+nmap('<leader>th', '<cmd>ToggleTerm direction=horizontal<CR>', 'Terminal horizontal')
+nmap('<leader>tv', '<cmd>ToggleTerm direction=vertical<CR>', 'Terminal vertical')
 
 -- Clipboard (visual mode only to avoid gp conflict)
 xmap('gy', '"+y', 'Yank to clipboard')
@@ -88,3 +123,12 @@ nmap('gP', '"+P', 'Paste from clipboard')
 
 -- Misc
 nmap('<leader>ot', function() vim.cmd([[%s/\s\+$//e]]) end, 'Trim trailing space')
+
+-- AI (Ollama via llama-cmp + nvim.ai)
+nmap('<leader>ai', '<cmd>Ai<CR>', 'AI Chat')
+nmap('<leader>aii', '<cmd>Ai inline<CR>', 'AI Inline assist')
+nmap('<leader>aic', '<cmd>LlamaCmp trigger<CR>', 'AI Trigger completion')
+nmap('<leader>aid', '<cmd>LlamaCmp dismiss<CR>', 'AI Dismiss suggestion')
+nmap('<leader>aist', '<cmd>LlamaCmp status<CR>', 'AI Status')
+
+
