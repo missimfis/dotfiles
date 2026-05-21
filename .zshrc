@@ -1,11 +1,17 @@
 # Minimal Fast Zsh Config
 
-# History
-setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_IGNORE_SPACE HIST_EXPIRE_DUPS_FIRST
-export HISTSIZE=50000 SAVEHIST=50000 HISTFILE=~/.zsh_history
+zmodload zsh/datetime
 
 # Completion - cached
 autoload -Uz compinit && compinit -C -d ~/.cache/zsh/zcompdump
+
+# Load modular configs
+[[ -f ~/.config/zsh/exports.zsh ]] && source ~/.config/zsh/exports.zsh
+[[ -f ~/.config/zsh/aliases.zsh ]] && source ~/.config/zsh/aliases.zsh
+
+# History (after exports so this overrides any HISTFILE from there)
+setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_IGNORE_SPACE HIST_EXPIRE_DUPS_FIRST
+export HISTSIZE=50000 SAVEHIST=50000 HISTFILE=~/.zsh_history
 
 # Options
 setopt AUTO_CD EXTENDED_GLOB NO_BEEP PROMPT_SUBST NO_CORRECT_ALL INTERACTIVE_COMMENTS GLOB_DOTS
@@ -30,7 +36,6 @@ export VISUAL=nvim
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git --exclude node_modules --exclude .cache'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
-export FZF_DEFAULT_OPTS='--height=40% --layout=reverse --border --ansi'
 export FZF_CTRL_R_OPTS='--height=60% --reverse --ansi --tac'
 [[ -f ~/.config/fzf/fzf.zsh ]] && source ~/.config/fzf/fzf.zsh
 
@@ -65,29 +70,34 @@ ff() { fzf --height=60% --reverse --bind 'enter:execute(nvim {})+abort' }
 gf() { rg --smart-case --hidden "$1" | fzf --height=60% --reverse --ansi }
 
 # FZF History Search (Ctrl+R) - overrides default zsh history
-if [[ -n $(whence -w fzf-history-widget) ]]; then
+if (( $+functions[fzf-history-widget] )); then
   bindkey '^R' fzf-history-widget
 else
-  # Fallback to native zsh history search
   bindkey '^R' history-incremental-search-backward
 fi
 
-# Nord colors (bright for dark bg)
-NORD7="%F{15}"     # Nord7 (white)
-NORD8="%F{14}"     # Nord8 (cyan)
-NORD9="%F{9}"      # Nord9 (red)
-NORD10="%F{10}"    # Nord10 (green)
-NORD11="%F{9}"     # Nord11 (red) - brighter
-NORD12="%F{12}"    # Nord12 (blue)
-NORD13="%F{13}"    # Nord13 (magenta)
-NORD14="%F{10}"    # Nord14 (green) - brighter
+# Nord colors
+NORD7="%F{15}"     # white
+NORD8="%F{14}"     # cyan
+NORD9="%F{9}"      # bright red
+NORD10="%F{10}"    # bright green
+NORD12="%F{12}"    # bright blue
+NORD13="%F{13}"    # bright magenta
+NORD14="%F{10}"    # green
+NORD11="%F{9}"     # red (for prompt arrow)
 
 # Prompt - Nord theme, with execution time and status
 preexec() {
   _cmd_start=$EPOCHREALTIME
-  _cmd_exectime=$(date +%H:%M:%S)
+  _cmd_exectime=${(%):-%D{%H:%M:%S}}
 }
+
+_prompt_dir=""
+_prompt_git=""
+_prompt_lang=""
+
 precmd() {
+  local last_rc=$?
   local elapsed=""
   if [[ -n "$_cmd_start" ]]; then
     local now=$EPOCHREALTIME
@@ -96,29 +106,37 @@ precmd() {
     local ms=$(( elapsed_ms % 1000 ))
     elapsed="${elapsed_s}.$(( ms / 100 ))s"
   fi
-  local git_branch=""
-  if git rev-parse --is-inside-work-tree &>/dev/null; then
-    git_branch="$(git branch --show-current 2>/dev/null)"
-    [[ -n "$git_branch" ]] && git_branch=" ${NORD13}⭠${git_branch}%f"
+
+  if [[ "$PWD" != "$_prompt_dir" ]]; then
+    _prompt_dir="$PWD"
+    _prompt_git=""
+    _prompt_lang=""
+
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+      local branch="$(git branch --show-current 2>/dev/null)"
+      [[ -n "$branch" ]] && _prompt_git=" ${NORD13}⭠${branch}%f"
+    fi
+
+    if [[ -f package.json ]]; then
+      local v=$(node -v 2>/dev/null)
+      [[ -n "$v" ]] && _prompt_lang=" ${NORD10}●node${v}%f"
+    elif [[ -f Cargo.toml ]]; then
+      local v=$(rustc --version 2>/dev/null | awk '{print $2}')
+      [[ -n "$v" ]] && _prompt_lang=" ${NORD9}●rust${v}%f"
+    elif [[ -f go.mod ]]; then
+      local v=$(go version 2>/dev/null | awk '{print $3}')
+      [[ -n "$v" ]] && _prompt_lang=" ${NORD12}●${v}%f"
+    elif [[ -f pyproject.toml || -f requirements.txt ]]; then
+      local v=$(python3 --version 2>/dev/null | awk '{print $2}')
+      [[ -n "$v" ]] && _prompt_lang=" ${NORD14}●py${v}%f"
+    fi
   fi
-  local lang_info=""
-  if [[ -f package.json ]]; then
-    local node_v=$(node -v 2>/dev/null)
-    [[ -n "$node_v" ]] && lang_info=" ${NORD10}●node${node_v}%f"
-  elif [[ -f Cargo.toml ]]; then
-    local rust_v=$(rustc --version 2>/dev/null | awk '{print $2}')
-    [[ -n "$rust_v" ]] && lang_info=" ${NORD9}●rust${rust_v}%f"
-  elif [[ -f go.mod ]]; then
-    local go_v=$(go version 2>/dev/null | awk '{print $3}')
-    [[ -n "$go_v" ]] && lang_info=" ${NORD12}●${go_v}%f"
-  elif [[ -f pyproject.toml || -f requirements.txt ]]; then
-    local py_v=$(python3 --version 2>/dev/null | awk '{print $2}')
-    [[ -n "$py_v" ]] && lang_info=" ${NORD14}●py${py_v}%f"
-  fi
+
   local cmd_status="%F{9}✗%f"
-  [[ $? -eq 0 ]] && cmd_status="%F{10}✓%f"
-  PS1="${NORD8}${_cmd_exectime}%f${git_branch}${lang_info} ${NORD7}%n ${NORD14}%1~ ${NORD14}${elapsed} ${cmd_status} ${NORD11}› %F{15}"
+  [[ $last_rc -eq 0 ]] && cmd_status="%F{10}✓%f"
+  PS1="${NORD8}${_cmd_exectime}%f${_prompt_git}${_prompt_lang} ${NORD7}%n ${NORD14}%1~ ${NORD14}${elapsed} ${cmd_status} ${NORD11}› %F{15}"
 }
+
 PS2='%F{12} %_ %f '
 
 # Load plugins
@@ -128,6 +146,4 @@ bindkey '^ ' autosuggest-accept
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 # Zcompile for faster startup
-if [[ -n "$HOME/.zshrc" ]]; then
-  zcompile ~/.zshrc 2>/dev/null
-fi
+[[ -f "$HOME/.zshrc" ]] && zcompile ~/.zshrc 2>/dev/null
