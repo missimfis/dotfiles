@@ -1,0 +1,141 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  flood — flood risk (Open-Meteo, no API key)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+DEFAULT_LOCATION="Winterthur"
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: flood [location]
+
+Print flood-relevant data from Open-Meteo (no API key).
+Shows precipitation and river discharge.
+All traffic via Tor.
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+LOCATION=${1:-$DEFAULT_LOCATION}
+LOCATION=${LOCATION//[^[:alnum:] _-]/}
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+# ---------- geocoding ----------
+GEO_URL="https://geocoding-api.open-meteo.com/v1/search?name=${LOCATION}&count=1&language=en&format=json"
+GEO_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && GEO_ARGS+=(--proxy "$TOR_PROXY")
+
+GEO_JSON=$(curl "${GEO_ARGS[@]}" "$GEO_URL") || {
+  echo "Error: geocoding lookup failed for '$LOCATION'" >&2
+  exit 1
+}
+
+LAT=$(echo "$GEO_JSON" | jq -r '.results[0].latitude // empty')
+LON=$(echo "$GEO_JSON" | jq -r '.results[0].longitude // empty')
+COUNTRY=$(echo "$GEO_JSON" | jq -r '.results[0].country // empty')
+NAME=$(echo "$GEO_JSON" | jq -r '.results[0].name // empty')
+
+if [[ -z "$LAT" || -z "$LON" ]]; then
+  echo "Error: location '$LOCATION' not found" >&2
+  exit 1
+fi
+
+# ---------- fetch flood data ----------
+FLOOD_URL="https://flood-api.open-meteo.com/v1/flood?latitude=${LAT}&longitude=${LON}&daily=river_discharge&timezone=auto&forecast_days=7"
+FLOOD_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && FLOOD_ARGS+=(--proxy "$TOR_PROXY")
+
+FLOOD_JSON=$(curl "${FLOOD_ARGS[@]}" "$FLOOD_URL") || {
+  echo "Error: flood data fetch failed" >&2
+  exit 1
+}
+
+# Also get precipitation data
+PRECIP_URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=precipitation_sum,precipitation_probability_max,weather_code&timezone=auto&forecast_days=7"
+PRECIP_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && PRECIP_ARGS+=(--proxy "$TOR_PROXY")
+
+PRECIP_JSON=$(curl "${PRECIP_ARGS[@]}" "$PRECIP_URL") || {
+  echo "Error: precipitation fetch failed" >&2
+  exit 1
+}
+
+# ---------- parse flood data ----------
+F_DATES=("${(@f)$(echo "$FLOOD_JSON" | jq -r '.daily.time[]')}")
+F_DISCHARGE=("${(@f)$(echo "$FLOOD_JSON" | jq -r '.daily.river_discharge[]')}")
+
+P_DATES=("${(@f)$(echo "$PRECIP_JSON" | jq -r '.daily.time[]')}")
+P_SUM=("${(@f)$(echo "$PRECIP_JSON" | jq -r '.daily.precipitation_sum[]')}")
+P_PROB=("${(@f)$(echo "$PRECIP_JSON" | jq -r '.daily.precipitation_probability_max[]')}")
+
+# ---------- calculate flood risk ----------
+MAX_DISCH=0
+MAX_PRECIP=0
+
+for ((i=1; i<=$#F_DISCHARGE; i++)); do
+  if [[ "${F_DISCHARGE[$i]:-}" != "null" && "${F_DISCHARGE[$i]:-}" != "" ]]; then
+    D_VAL=${F_DISCHARGE[$i]}
+    if (( D_VAL > MAX_DISCH )); then
+      MAX_DISCH=$D_VAL
+    fi
+  fi
+  if [[ "${P_SUM[$i]:-}" != "null" && "${P_SUM[$i]:-}" != "" ]]; then
+    P_VAL=${P_SUM[$i]}
+    if (( P_VAL > MAX_PRECIP )); then
+      MAX_PRECIP=$P_VAL
+    fi
+  fi
+done
+
+# Risk assessment
+RISK_LEVEL="LOW"
+if (( MAX_DISCH > 500 )) || (( MAX_PRECIP > 50 )); then
+  RISK_LEVEL="HIGH"
+elif (( MAX_DISCH > 200 )) || (( MAX_PRECIP > 30 )); then
+  RISK_LEVEL="MODERATE"
+elif (( MAX_DISCH > 100 )) || (( MAX_PRECIP > 15 )); then
+  RISK_LEVEL="ELEVATED"
+fi
+
+# ---------- display ----------
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Flood risk - ${NAME}"
+[[ -n "$COUNTRY" ]] && echo "  ${COUNTRY}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Risk level: ${RISK_LEVEL}"
+echo ""
+echo "  -- 7-day forecast --"
+printf "  %-12s %8s %8s %12s\n" "Date" "Precip" "Prob" "Discharge"
+for ((i=1; i<=$#F_DISCHARGE; i++)); do
+  P_S=${P_SUM[$i]:--}
+  P_P=${P_PROB[$i]:--}
+  F_D=${F_DISCHARGE[$i]:--}
+  printf "  %-12s %7s%% %7s%% %10s m3/s\n" "${F_DATES[$i]}" "$P_S" "$P_P" "$F_D"
+done
+echo ""
+echo "  Max discharge: ${MAX_DISCH} m3/s"
+echo "  Max precipitation: ${MAX_PRECIP} mm"
+echo ""

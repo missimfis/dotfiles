@@ -1,50 +1,239 @@
 #!/usr/bin/env zsh
 # -------------------------------------------------
-#  wttr.in quick‑forecast helper
-#  • Default city: Winterthur
-#  • Caches results for 10 minutes
-#  • Silent, fast, robust
+#  wttr — suckless weather (no API key, over Tor)
+#  Data: Open-Meteo (free & open-source, AGPL)
+#  Privacy: all requests routed through Tor
 # -------------------------------------------------
 
-set -euo pipefail               # abort on errors, undefined vars, pipeline failures
-IFS=$'\n\t'                    # sane field splitting
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+DEFAULT_LOCATION="Winterthur"
+FORECAST_DAYS=16
+TOR_PROXY="socks5h://127.0.0.1:9050"
 
 # ---------- helpers ----------
 show_help() {
   cat <<'EOF'
-Usage: weather [city]
+Usage: wttr [location]
 
-Print a short weather report from wttr.in.
-If no city is supplied, "Winterthur" is used.
+Print current weather, forecast, and storm alerts.
+Data from Open-Meteo (free, no key). All traffic via Tor.
 
 Options:
   -h, --help   Show this help message and exit.
 EOF
 }
 
+# WMO weather code → human readable
+wmo_desc() {
+  local code=$1
+  case $code in
+    0)   echo "Clear sky" ;;
+    1)   echo "Mainly clear" ;;
+    2)   echo "Partly cloudy" ;;
+    3)   echo "Overcast" ;;
+    45)  echo "Fog" ;;
+    48)  echo "Rime fog" ;;
+    51)  echo "Light drizzle" ;;
+    53)  echo "Drizzle" ;;
+    55)  echo "Heavy drizzle" ;;
+    56)  echo "Freezing drizzle" ;;
+    57)  echo "Freezing drizzle" ;;
+    61)  echo "Light rain" ;;
+    63)  echo "Rain" ;;
+    65)  echo "Heavy rain" ;;
+    66)  echo "Freezing rain" ;;
+    67)  echo "Freezing rain" ;;
+    71)  echo "Light snow" ;;
+    73)  echo "Snow" ;;
+    75)  echo "Heavy snow" ;;
+    77)  echo "Snow grains" ;;
+    80)  echo "Light showers" ;;
+    81)  echo "Showers" ;;
+    82)  echo "Violent showers" ;;
+    85)  echo "Snow showers" ;;
+    86)  echo "Snow showers" ;;
+    95)  echo "Thunderstorm" ;;
+    96)  echo "Storm w/ hail" ;;
+    99)  echo "Storm w/ hail" ;;
+    *)   echo "Unknown ($code)" ;;
+  esac
+}
+
+# Wind degrees → compass direction
+wind_compass() {
+  local deg=$1
+  local dirs=(N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW)
+  local idx=$(( (deg + 11.25) / 22.5 ))
+  echo "${dirs[$(( idx % 16 + 1 ))]}"
+}
+
+# Storm level from weather code
+storm_level() {
+  local code=$1
+  case $code in
+    95) echo "storm" ;;
+    96|99) echo "severe" ;;
+    *) echo "" ;;
+  esac
+}
+
 # ---------- argument parsing ----------
 while (( $# )); do
   case "$1" in
     -h|--help) show_help; exit 0 ;;
-    *) break ;;                 # first non‑option is the city name
+    *) break ;;
   esac
 done
 
-# Default city if none given
-DESTINATION=${1:-Winterthur}
+LOCATION=${1:-$DEFAULT_LOCATION}
 
-# Sanitize – keep only letters, numbers, dash, underscore
-DESTINATION=${DESTINATION//[^[:alnum:]_-]/}
+# Sanitize — keep only safe characters
+LOCATION=${LOCATION//[^[:alnum:] _-]/}
 
-# ---------- fetch from wttr.in ----------
-URL="https://wttr.in/${DESTINATION}?format=v2d"
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
 
-# -f  : fail silently on HTTP errors (>=400)
-# -s  : silent (no progress meter)
-# -L  : follow redirects (just in case)
-# --http2 : use HTTP/2 if the server supports it
-# --max-time 10 : abort after 10 seconds
-# -A  : custom user‑agent (optional but polite)
-curl -fsSL --compressed \
-     --http2 --max-time 10 \
-     "$URL" 
+# ---------- geocoding (Open-Meteo, no key) ----------
+GEO_URL="https://geocoding-api.open-meteo.com/v1/search?name=${LOCATION}&count=1&language=en&format=json"
+
+GEO_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && GEO_ARGS+=(--proxy "$TOR_PROXY")
+
+GEO_JSON=$(curl "${GEO_ARGS[@]}" "$GEO_URL") || {
+  echo "Error: geocoding lookup failed for '$LOCATION'" >&2
+  exit 1
+}
+
+LAT=$(echo "$GEO_JSON" | jq -r '.results[0].latitude // empty')
+LON=$(echo "$GEO_JSON" | jq -r '.results[0].longitude // empty')
+COUNTRY=$(echo "$GEO_JSON" | jq -r '.results[0].country // empty')
+NAME=$(echo "$GEO_JSON" | jq -r '.results[0].name // empty')
+
+if [[ -z "$LAT" || -z "$LON" ]]; then
+  echo "Error: location '$LOCATION' not found" >&2
+  exit 1
+fi
+
+# ---------- fetch weather (Open-Meteo, no key) ----------
+WX_URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}"
+WX_URL+="&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m"
+WX_URL+="&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max"
+WX_URL+="&hourly=weather_code,temperature_2m,precipitation_probability,wind_speed_10m"
+WX_URL+="&timezone=auto&forecast_days=${FORECAST_DAYS}"
+
+WX_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && WX_ARGS+=(--proxy "$TOR_PROXY")
+
+WX_JSON=$(curl "${WX_ARGS[@]}" "$WX_URL") || {
+  echo "Error: weather fetch failed" >&2
+  exit 1
+}
+
+# ---------- parse current ----------
+CUR_TEMP=$(echo "$WX_JSON" | jq -r '.current.temperature_2m')
+CUR_FEELS=$(echo "$WX_JSON" | jq -r '.current.apparent_temperature')
+CUR_HUM=$(echo "$WX_JSON" | jq -r '.current.relative_humidity_2m')
+CUR_WCODE=$(echo "$WX_JSON" | jq -r '.current.weather_code')
+CUR_WIND=$(echo "$WX_JSON" | jq -r '.current.wind_speed_10m')
+CUR_WDIR=$(echo "$WX_JSON" | jq -r '.current.wind_direction_10m')
+
+# ---------- parse hourly (next 12 hours) ----------
+H_TIMES=("${(@f)$(echo "$WX_JSON" | jq -r '.hourly.time[0:12][]')}")
+H_TEMPS=("${(@f)$(echo "$WX_JSON" | jq -r '.hourly.temperature_2m[0:12][]')}")
+H_CODES=("${(@f)$(echo "$WX_JSON" | jq -r '.hourly.weather_code[0:12][]')}")
+H_PRECIP=("${(@f)$(echo "$WX_JSON" | jq -r '.hourly.precipitation_probability[0:12][]')}")
+H_WIND=("${(@f)$(echo "$WX_JSON" | jq -r '.hourly.wind_speed_10m[0:12][]')}")
+
+# ---------- parse daily ----------
+D_DATES=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.time[]')}")
+D_CODES=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.weather_code[]')}")
+D_MAX=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.temperature_2m_max[]')}")
+D_MIN=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.temperature_2m_min[]')}")
+D_PRECIP=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.precipitation_probability_max[]')}")
+D_WIND=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.wind_speed_10m_max[]')}")
+
+# ---------- storm detection ----------
+STORM_NOW=""
+CUR_STORM=$(storm_level "$CUR_WCODE")
+[[ -n "$CUR_STORM" ]] && STORM_NOW="⚡ $(wmo_desc $CUR_WCODE)"
+
+STORM_HOURS=""
+for ((i=1; i<=$#H_CODES; i++)); do
+  H_STORM=$(storm_level "${H_CODES[$i]}")
+  if [[ -n "$H_STORM" ]]; then
+    STORM_HOURS+="⚡ ${H_TIMES[$i]##*T}  $(wmo_desc ${H_CODES[$i]})\n"
+  fi
+done
+
+STORM_DAYS=""
+for ((i=1; i<=$#D_CODES; i++)); do
+  D_STORM=$(storm_level "${D_CODES[$i]}")
+  if [[ -n "$D_STORM" ]]; then
+    STORM_DAYS+="⚡ ${D_DATES[$i]}  $(wmo_desc ${D_CODES[$i]})\n"
+  fi
+done
+
+# ---------- output ----------
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  ${NAME}"
+[[ -n "$COUNTRY" ]] && echo "  ${COUNTRY}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Now:    $(wmo_desc $CUR_WCODE)"
+echo "  Temp:   ${CUR_TEMP}°C (feels ${CUR_FEELS}°C)"
+echo "  Hum:    ${CUR_HUM}%"
+echo "  Wind:   ${CUR_WIND} km/h $(wind_compass $CUR_WDIR)"
+echo ""
+
+# Storm alert
+if [[ -n "$STORM_NOW" ]]; then
+  echo "  ⚠️  STORM NOW: ${STORM_NOW}"
+  echo ""
+fi
+
+# What's coming — hourly
+echo "  ── Coming hours ──"
+for ((i=1; i<=$#H_CODES; i++)); do
+  printf "  %s  %2d°C  %3d%%  %2d km/h  %s\n" \
+    "${H_TIMES[$i]##*T}" \
+    "${H_TEMPS[$i]}" \
+    "${H_PRECIP[$i]}" \
+    "${H_WIND[$i]}" \
+    "$(wmo_desc ${H_CODES[$i]})"
+done
+echo ""
+
+# Storm forecast
+if [[ -n "$STORM_HOURS" || -n "$STORM_DAYS" ]]; then
+  echo "  ── Storm forecast ──"
+  [[ -n "$STORM_HOURS" ]] && echo -n "$STORM_HOURS"
+  [[ -n "$STORM_DAYS" ]] && echo -n "$STORM_DAYS"
+  echo ""
+fi
+
+# Daily forecast
+echo "  ── ${FORECAST_DAYS}-day forecast ──"
+for ((i=1; i<=$#D_CODES; i++)); do
+  D_MAX_VAL=${D_MAX[$i]:--}
+  [[ "$D_MAX_VAL" == "null" ]] && D_MAX_VAL="-"
+  D_MIN_VAL=${D_MIN[$i]:--}
+  [[ "$D_MIN_VAL" == "null" ]] && D_MIN_VAL="-"
+  D_PRECIP_VAL=${D_PRECIP[$i]:--}
+  [[ "$D_PRECIP_VAL" == "null" ]] && D_PRECIP_VAL="-"
+  D_WIND_VAL=${D_WIND[$i]:--}
+  [[ "$D_WIND_VAL" == "null" ]] && D_WIND_VAL="-"
+  printf "  %s  %4s / %4s  %4s  %6s  %s\n" \
+    "${D_DATES[$i]}" \
+    "${D_MAX_VAL}" \
+    "${D_MIN_VAL}" \
+    "${D_PRECIP_VAL}" \
+    "${D_WIND_VAL}" \
+    "$(wmo_desc ${D_CODES[$i]})"
+done
+echo ""

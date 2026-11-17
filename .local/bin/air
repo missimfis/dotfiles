@@ -1,0 +1,110 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  air — air quality (Open-Meteo, no API key)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+DEFAULT_LOCATION="Winterthur"
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: air [location]
+
+Print air quality from Open-Meteo (no API key).
+All traffic via Tor.
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+aqi_desc() {
+  local aqi=$1
+  if [[ $aqi -le 50 ]]; then
+    echo "Good"
+  elif [[ $aqi -le 100 ]]; then
+    echo "Moderate"
+  elif [[ $aqi -le 150 ]]; then
+    echo "Unhealthy for sensitive"
+  elif [[ $aqi -le 200 ]]; then
+    echo "Unhealthy"
+  elif [[ $aqi -le 300 ]]; then
+    echo "Very unhealthy"
+  else
+    echo "Hazardous"
+  fi
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+LOCATION=${1:-$DEFAULT_LOCATION}
+LOCATION=${LOCATION//[^[:alnum:] _-]/}
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+# ---------- geocoding ----------
+GEO_URL="https://geocoding-api.open-meteo.com/v1/search?name=${LOCATION}&count=1&language=en&format=json"
+GEO_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && GEO_ARGS+=(--proxy "$TOR_PROXY")
+
+GEO_JSON=$(curl "${GEO_ARGS[@]}" "$GEO_URL") || {
+  echo "Error: geocoding lookup failed for '$LOCATION'" >&2
+  exit 1
+}
+
+LAT=$(echo "$GEO_JSON" | jq -r '.results[0].latitude // empty')
+LON=$(echo "$GEO_JSON" | jq -r '.results[0].longitude // empty')
+COUNTRY=$(echo "$GEO_JSON" | jq -r '.results[0].country // empty')
+NAME=$(echo "$GEO_JSON" | jq -r '.results[0].name // empty')
+
+if [[ -z "$LAT" || -z "$LON" ]]; then
+  echo "Error: location '$LOCATION' not found" >&2
+  exit 1
+fi
+
+# ---------- fetch air quality ----------
+AIR_URL="https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LON}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide&timezone=auto"
+AIR_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && AIR_ARGS+=(--proxy "$TOR_PROXY")
+
+AIR_JSON=$(curl "${AIR_ARGS[@]}" "$AIR_URL") || {
+  echo "Error: air quality fetch failed" >&2
+  exit 1
+}
+
+# ---------- parse and display ----------
+AQI=$(echo "$AIR_JSON" | jq -r '.current.us_aqi // "?"')
+PM25=$(echo "$AIR_JSON" | jq -r '.current.pm2_5 // "?"')
+PM10=$(echo "$AIR_JSON" | jq -r '.current.pm10 // "?"')
+OZONE=$(echo "$AIR_JSON" | jq -r '.current.ozone // "?"')
+NO2=$(echo "$AIR_JSON" | jq -r '.current.nitrogen_dioxide // "?"')
+SO2=$(echo "$AIR_JSON" | jq -r '.current.sulphur_dioxide // "?"')
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Air quality - ${NAME}"
+[[ -n "$COUNTRY" ]] && echo "  ${COUNTRY}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  US AQI:  ${AQI} ($(aqi_desc ${AQI:-0}))"
+echo "  PM2.5:   ${PM25} ug/m3"
+echo "  PM10:    ${PM10} ug/m3"
+echo "  Ozone:   ${OZONE} ug/m3"
+echo "  NO2:     ${NO2} ug/m3"
+echo "  SO2:     ${SO2} ug/m3"
+echo ""

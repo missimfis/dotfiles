@@ -1,0 +1,87 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  space — space weather (NOAA SWPC, no API key)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: space
+
+Print space weather from NOAA SWPC (no API key).
+All traffic via Tor.
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# Clean JSON: strip control chars (except newline/tab), parse with jq
+clean_json() {
+  sed 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' | jq '.' 2>/dev/null || echo "[]"
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+# ---------- fetch space weather ----------
+FETCH_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && FETCH_ARGS+=(--proxy "$TOR_PROXY")
+
+K_RAW=$(curl "${FETCH_ARGS[@]}" "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json" 2>/dev/null) || K_RAW=""
+WIND_RAW=$(curl "${FETCH_ARGS[@]}" "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json" 2>/dev/null) || WIND_RAW=""
+ALERT_RAW=$(curl "${FETCH_ARGS[@]}" "https://services.swpc.noaa.gov/products/alerts.json" 2>/dev/null) || ALERT_RAW=""
+
+K_JSON=$(echo "$K_RAW" | clean_json) || K_JSON="[]"
+WIND_JSON=$(echo "$WIND_RAW" | clean_json) || WIND_JSON="[]"
+ALERT_JSON=$(echo "$ALERT_RAW" | clean_json) || ALERT_JSON="[]"
+
+# ---------- parse and display ----------
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Space weather (NOAA SWPC)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# K-index
+K_NOW=$(echo "$K_JSON" | jq -r 'if type=="array" and length>0 then .[0].k_index else "?" end' 2>/dev/null) || K_NOW="?"
+K_MAX=$(echo "$K_JSON" | jq -r 'if type=="array" and length>0 then [.[].k_index] | max else "?" end' 2>/dev/null) || K_MAX="?"
+echo "  K-index (geomagnetic): now=${K_NOW} max=${K_MAX}"
+echo ""
+
+# Solar wind
+WIND_LEN=$(echo "$WIND_JSON" | jq 'if type=="array" then length else 0 end' 2>/dev/null) || WIND_LEN=0
+if [[ "$WIND_LEN" -gt 0 ]]; then
+  WIND_SPEED=$(echo "$WIND_JSON" | jq -r '.[-1].speed // "?"' 2>/dev/null) || WIND_SPEED="?"
+  WIND_DENSITY=$(echo "$WIND_JSON" | jq -r '.[-1].density // "?"' 2>/dev/null) || WIND_DENSITY="?"
+  echo "  Solar wind: ${WIND_SPEED} km/s, density ${WIND_DENSITY} p/cm3"
+  echo ""
+fi
+
+# Alerts
+A_COUNT=$(echo "$ALERT_JSON" | jq 'if type=="array" then length else 0 end' 2>/dev/null) || A_COUNT=0
+if [[ "$A_COUNT" -gt 0 ]]; then
+  echo "  -- Active alerts --"
+  for ((i=0; i<A_COUNT; i++)); do
+    A_MSG=$(echo "$ALERT_JSON" | jq -r ".[$i].message // empty" 2>/dev/null) || A_MSG=""
+    [[ -n "$A_MSG" ]] && echo "  ! ${A_MSG}"
+  done
+  echo ""
+fi

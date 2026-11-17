@@ -1,0 +1,88 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  intel — run all data sources, unified output
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+DEFAULT_LOCATION="Winterthur"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: intel [location]
+
+Run all data source scripts and print unified intelligence report.
+Sources: weather, earthquakes, air quality, space weather, alerts, fires, floods
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+LOCATION=${1:-$DEFAULT_LOCATION}
+SCRIPT_DIR="${0:A:h}"
+
+echo "╔══════════════════════════════════╗"
+echo "║  INTELLIGENCE REPORT              ║"
+echo "╚══════════════════════════════════╝"
+echo ""
+
+# Weather
+if [[ -x "${SCRIPT_DIR}/wttr" ]]; then
+  "${SCRIPT_DIR}/wttr" "$LOCATION"
+  echo ""
+fi
+
+# Earthquakes
+if [[ -x "${SCRIPT_DIR}/quakes" ]]; then
+  "${SCRIPT_DIR}/quakes" 4.0 5
+  echo ""
+fi
+
+# Air quality
+if [[ -x "${SCRIPT_DIR}/air" ]]; then
+  "${SCRIPT_DIR}/air" "$LOCATION"
+  echo ""
+fi
+
+# Space weather
+if [[ -x "${SCRIPT_DIR}/space" ]]; then
+  "${SCRIPT_DIR}/space"
+  echo ""
+fi
+
+# Alerts
+if [[ -x "${SCRIPT_DIR}/alerts" ]]; then
+  "${SCRIPT_DIR}/alerts" "$LOCATION"
+  echo ""
+fi
+
+# Flood risk
+if [[ -x "${SCRIPT_DIR}/flood" ]]; then
+  "${SCRIPT_DIR}/flood" "$LOCATION"
+  echo ""
+fi
+
+# Fires
+if [[ -x "${SCRIPT_DIR}/fires" ]]; then
+  "${SCRIPT_DIR}/fires" 1 10
+  echo ""
+fi
+
+# OSINT (if target provided)
+if [[ -x "${SCRIPT_DIR}/osint" && -n "$LOCATION" ]]; then
+  "${SCRIPT_DIR}/osint" "$LOCATION"
+  echo ""
+fi

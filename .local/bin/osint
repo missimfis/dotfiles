@@ -1,0 +1,185 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  osint — OSINT reconnaissance (no API keys)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: osint <target>
+
+Gather OSINT data on a target (domain, IP, email, username).
+All traffic via Tor, no API keys.
+
+Sources:
+  - DNS records (via dig)
+  - WHOIS (via whois)
+  - Subdomains (crt.sh)
+  - Wayback Machine availability
+  - Shodan (limited, no key)
+  - HaveIBeenPwned (breach check)
+  - URLhaus (malware/phishing)
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+if [[ $# -eq 0 ]]; then
+  echo "Error: no target specified" >&2
+  show_help
+  exit 1
+fi
+
+TARGET="$1"
+TARGET=${TARGET//[^[:alnum:]@._-]/}
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+FETCH_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && FETCH_ARGS+=(--proxy "$TOR_PROXY")
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  OSINT report: ${TARGET}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Determine target type
+if [[ "$TARGET" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  TARGET_TYPE="ip"
+elif [[ "$TARGET" =~ @ ]]; then
+  TARGET_TYPE="email"
+elif [[ "$TARGET" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+  TARGET_TYPE="domain"
+else
+  TARGET_TYPE="username"
+fi
+
+echo "  Target type: ${TARGET_TYPE}"
+echo ""
+
+# ---------- DNS records ----------
+if [[ "$TARGET_TYPE" == "domain" || "$TARGET_TYPE" == "ip" ]]; then
+  echo "  -- DNS records --"
+  if command -v dig >/dev/null 2>&1; then
+    dig +short "$TARGET" A 2>/dev/null | grep -v '^;;' | head -5 | sed 's/^/  A: /'
+    dig +short "$TARGET" AAAA 2>/dev/null | grep -v '^;;' | head -5 | sed 's/^/  AAAA: /'
+    dig +short "$TARGET" MX 2>/dev/null | grep -v '^;;' | head -5 | sed 's/^/  MX: /'
+    dig +short "$TARGET" TXT 2>/dev/null | grep -v '^;;' | head -5 | sed 's/^/  TXT: /'
+    dig +short "$TARGET" NS 2>/dev/null | grep -v '^;;' | head -5 | sed 's/^/  NS: /'
+  else
+    echo "  dig not available"
+  fi
+  echo ""
+fi
+
+# ---------- WHOIS ----------
+if [[ "$TARGET_TYPE" == "domain" || "$TARGET_TYPE" == "ip" ]]; then
+  echo "  -- WHOIS --"
+  if command -v whois >/dev/null 2>&1; then
+    WHOIS_OUT=$(whois "$TARGET" 2>/dev/null | head -30)
+    if [[ -n "$WHOIS_OUT" ]]; then
+      echo "$WHOIS_OUT" | sed 's/^/  /'
+    else
+      echo "  No WHOIS data"
+    fi
+  else
+    echo "  whois not available"
+  fi
+  echo ""
+fi
+
+# ---------- Subdomains (crt.sh) ----------
+if [[ "$TARGET_TYPE" == "domain" ]]; then
+  echo "  -- Subdomains (crt.sh) --"
+  SUBDOMAINS=$(curl "${FETCH_ARGS[@]}" "https://crt.sh/?q=${TARGET}&output=json" 2>/dev/null | jq -r '.[].name_value' 2>/dev/null | sort -u | head -20) || SUBDOMAINS=""
+  if [[ -n "$SUBDOMAINS" ]]; then
+    echo "$SUBDOMAINS" | sed 's/^/  /'
+  else
+    echo "  No subdomains found"
+  fi
+  echo ""
+fi
+
+# ---------- Wayback Machine ----------
+if [[ "$TARGET_TYPE" == "domain" ]]; then
+  echo "  -- Wayback Machine --"
+  WAYBACK=$(curl "${FETCH_ARGS[@]}" "https://archive.org/wayback/available?url=${TARGET}" 2>/dev/null | jq -r '.archived_snapshots.closest.url // empty' 2>/dev/null) || WAYBACK=""
+  if [[ -n "$WAYBACK" ]]; then
+    echo "  Available: ${WAYBACK}"
+  else
+    echo "  No snapshots found"
+  fi
+  echo ""
+fi
+
+# ---------- HaveIBeenPwned (breach check) ----------
+if [[ "$TARGET_TYPE" == "email" ]]; then
+  echo "  -- Breach check (HIBP) --"
+  HIBP=$(curl "${FETCH_ARGS[@]}" "https://haveibeenpwned.com/api/v3/breachedaccount/${TARGET}" 2>/dev/null | jq -r '.[].Name' 2>/dev/null) || HIBP=""
+  if [[ -n "$HIBP" ]]; then
+    echo "$HIBP" | sed 's/^/  Breached: /'
+  else
+    echo "  No breaches found (or API unavailable)"
+  fi
+  echo ""
+fi
+
+# ---------- URLhaus (malware/phishing) ----------
+if [[ "$TARGET_TYPE" == "domain" || "$TARGET_TYPE" == "ip" ]]; then
+  echo "  -- URLhaus (abuse.ch) --"
+  URLHAUS=$(curl "${FETCH_ARGS[@]}" -X POST "https://urlhaus-api.abuse.ch/v1/host/" -d "host=${TARGET}" 2>/dev/null | jq -r '.urls[].url' 2>/dev/null | head -10) || URLHAUS=""
+  if [[ -n "$URLHAUS" ]]; then
+    echo "$URLHAUS" | sed 's/^/  Malicious: /'
+  else
+    echo "  No malicious URLs reported"
+  fi
+  echo ""
+fi
+
+# ---------- Shodan (limited, no key) ----------
+if [[ "$TARGET_TYPE" == "ip" ]]; then
+  echo "  -- Shodan (limited) --"
+  SHODAN=$(curl "${FETCH_ARGS[@]}" "https://internetdb.shodan.io/${TARGET}" 2>/dev/null | jq -r '.vulns // empty' 2>/dev/null) || SHODAN=""
+  if [[ -n "$SHODAN" ]]; then
+    echo "  CVEs: ${SHODAN}"
+  else
+    echo "  No data available"
+  fi
+  echo ""
+fi
+
+# ---------- Username search ----------
+if [[ "$TARGET_TYPE" == "username" ]]; then
+  echo "  -- Username search --"
+  for SITE in "https://github.com" "https://reddit.com" "https://twitter.com" "https://instagram.com"; do
+    STATUS=$(curl "${FETCH_ARGS[@]}" -o /dev/null -w "%{http_code}" "${SITE}/${TARGET}" 2>/dev/null) || STATUS="000"
+    if [[ "$STATUS" == "200" ]]; then
+      echo "  Found: ${SITE}/${TARGET}"
+    fi
+  done
+  echo ""
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  End of OSINT report"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

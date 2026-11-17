@@ -1,0 +1,77 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  fires — active fires (NASA FIRMS, no API key)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+DAYS=1
+LIMIT=20
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: fires [days] [limit]
+
+Print active fires from NASA FIRMS (no API key).
+All traffic via Tor.
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+DAYS=${1:-$DAYS}
+LIMIT=${2:-$LIMIT}
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+# ---------- fetch fire data ----------
+FIRE_URL="https://firms.modaps.eosdis.nasa.gov/api/area/csv/VIIRS_NOAA20_NRT/world/${DAYS}"
+FIRE_ARGS=(-fsSL --max-time 30)
+[[ -n "$TOR_PROXY" ]] && FIRE_ARGS+=(--proxy "$TOR_PROXY")
+
+FIRE_CSV=$(curl "${FIRE_ARGS[@]}" "$FIRE_URL" 2>/dev/null) || {
+  echo "Error: fire data fetch failed" >&2
+  exit 1
+}
+
+# ---------- parse and display ----------
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Active fires (NASA FIRMS, ${DAYS}d)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Parse CSV - skip header
+LINE_COUNT=$(echo "$FIRE_CSV" | wc -l)
+if [[ "$LINE_COUNT" -le 1 ]]; then
+  echo "  No active fires found."
+  exit 0
+fi
+
+echo "  Showing up to ${LIMIT} most recent:"
+echo ""
+printf "  %-20s %6s %6s %10s %8s\n" "Lat/Lon" "FRP" "Confidence" "Date" "Type"
+echo "$FIRE_CSV" | tail -n +2 | head -n "$LIMIT" | while IFS=',' read -r LAT LON BRIGHT T SCAN TRACK ACQ_DATE ACQ_TIME SATELLITE CONFIDENCE VERSION BRIGHT_T31 FRP DAYNIGHT; do
+  CONF_VAL="${CONFIDENCE:0:3}"
+  printf "  %-20s %6s %6s %10s %8s\n" "${LAT:0:7},${LON:0:7}" "${FRP}" "${CONF_VAL}" "${ACQ_DATE}" "${DAYNIGHT}"
+done
+echo ""
+echo "  Total fires in dataset: $((LINE_COUNT - 1))"
+echo ""

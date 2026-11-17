@@ -1,0 +1,127 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  alerts — emergency alerts (multiple sources)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+DEFAULT_LOCATION="Winterthur"
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: alerts [location]
+
+Print emergency alerts from multiple sources.
+All traffic via Tor, no API keys.
+
+Sources:
+  - USGS earthquakes (recent significant)
+  - NOAA space weather alerts
+  - Open-Meteo weather warnings
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# Clean JSON: strip control chars, parse with jq
+clean_json() {
+  sed 's/[\x00-\x08\x0b\x0c\x0e-\x1f]//g' | jq '.' 2>/dev/null || echo "[]"
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+LOCATION=${1:-$DEFAULT_LOCATION}
+LOCATION=${LOCATION//[^[:alnum:] _-]/}
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+FETCH_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && FETCH_ARGS+=(--proxy "$TOR_PROXY")
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Emergency alerts"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ----- Earthquake alerts -----
+echo "  -- Significant earthquakes (last 24h, M>=5.5) --"
+QUAKE_URL="https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minmagnitude=5.5&limit=5&orderby=time"
+QUAKE_JSON=$(curl "${FETCH_ARGS[@]}" "$QUAKE_URL" 2>/dev/null | jq '.' 2>/dev/null) || QUAKE_JSON='{"features":[]}'
+
+Q_COUNT=$(echo "$QUAKE_JSON" | jq -r '.features | length' 2>/dev/null) || Q_COUNT=0
+if [[ "$Q_COUNT" -eq 0 ]]; then
+  echo "  None"
+else
+  for ((i=0; i<Q_COUNT; i++)); do
+    Q_MAG=$(echo "$QUAKE_JSON" | jq -r ".features[$i].properties.mag" 2>/dev/null) || Q_MAG="?"
+    Q_PLACE=$(echo "$QUAKE_JSON" | jq -r ".features[$i].properties.place" 2>/dev/null) || Q_PLACE="?"
+    echo "  M${Q_MAG}  ${Q_PLACE}"
+  done
+fi
+echo ""
+
+# ----- Space weather alerts -----
+echo "  -- Space weather alerts --"
+ALERT_URL="https://services.swpc.noaa.gov/products/alerts.json"
+ALERT_RAW=$(curl "${FETCH_ARGS[@]}" "$ALERT_URL" 2>/dev/null) || ALERT_RAW=""
+ALERT_JSON=$(echo "$ALERT_RAW" | clean_json) || ALERT_JSON="[]"
+
+A_COUNT=$(echo "$ALERT_JSON" | jq 'if type=="array" then length else 0 end' 2>/dev/null) || A_COUNT=0
+if [[ "$A_COUNT" -eq 0 ]]; then
+  echo "  None"
+else
+  for ((i=0; i<A_COUNT; i++)); do
+    A_MSG=$(echo "$ALERT_JSON" | jq -r ".[$i].message // empty" 2>/dev/null) || A_MSG=""
+    [[ -n "$A_MSG" ]] && echo "  ! ${A_MSG}"
+  done
+fi
+echo ""
+
+# ----- Weather warnings -----
+echo "  -- Weather forecast (next 3 days) --"
+GEO_URL="https://geocoding-api.open-meteo.com/v1/search?name=${LOCATION}&count=1&language=en&format=json"
+GEO_JSON=$(curl "${FETCH_ARGS[@]}" "$GEO_URL" 2>/dev/null | jq '.' 2>/dev/null) || GEO_JSON='{"results":[]}'
+
+LAT=$(echo "$GEO_JSON" | jq -r '.results[0].latitude // empty' 2>/dev/null) || LAT=""
+LON=$(echo "$GEO_JSON" | jq -r '.results[0].longitude // empty' 2>/dev/null) || LON=""
+NAME=$(echo "$GEO_JSON" | jq -r '.results[0].name // empty' 2>/dev/null) || NAME=""
+
+if [[ -n "$LAT" && -n "$LON" ]]; then
+  WX_URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&timezone=auto&forecast_days=3"
+  WX_JSON=$(curl "${FETCH_ARGS[@]}" "$WX_URL" 2>/dev/null | jq '.' 2>/dev/null) || WX_JSON='{"daily":{}}'
+
+  WX_DATES=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.time[]' 2>/dev/null)}")
+  WX_CODES=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.weather_code[]' 2>/dev/null)}")
+  WX_MAX=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.temperature_2m_max[]' 2>/dev/null)}")
+  WX_MIN=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.temperature_2m_min[]' 2>/dev/null)}")
+  WX_WIND=("${(@f)$(echo "$WX_JSON" | jq -r '.daily.wind_speed_10m_max[]' 2>/dev/null)}")
+
+  for ((i=1; i<=$#WX_CODES; i++)); do
+    CODE=${WX_CODES[$i]}
+    WARN=""
+    case $CODE in
+      75|77|85|86) WARN=" [HEAVY SNOW]" ;;
+      95|96|99) WARN=" [THUNDERSTORM]" ;;
+      65|67) WARN=" [FREEZING RAIN]" ;;
+      82) WARN=" [VIOLENT SHOWERS]" ;;
+    esac
+    printf "  %s  %2s/%2s  %s%s\n" "${WX_DATES[$i]}" "${WX_MAX[$i]}" "${WX_MIN[$i]}" "${CODE}" "$WARN"
+  done
+fi
+echo ""

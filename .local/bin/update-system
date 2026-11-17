@@ -6,13 +6,10 @@ log() { printf '[%s] %s\n' "$(date '+%H:%M')" "$*"; }
 die() { log "ERROR: $*"; exit 1; }
 
 log "Syncing package databases..."
-sudo aura -Sy --noconfirm || die "Failed to sync repos"
+paru -Sy --noconfirm || die "Failed to sync repos"
 
 log "Upgrading official packages..."
-sudo aura -Syu --noconfirm || die "System upgrade failed"
-
-log "Upgrading AUR packages..."
-sudo aura -Ayu --noconfirm || die "AUR upgrade failed"
+paru -Syu || die "System upgrade failed"
 
 if command -v cargo >/dev/null 2>&1; then
     if command -v cargo-install-update >/dev/null 2>&1; then

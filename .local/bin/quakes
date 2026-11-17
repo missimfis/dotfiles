@@ -1,0 +1,81 @@
+#!/usr/bin/env zsh
+# -------------------------------------------------
+#  quakes — recent earthquakes (USGS, no API key)
+#  Privacy: all requests routed through Tor
+# -------------------------------------------------
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------- config ----------
+MIN_MAG=4.0
+LIMIT=10
+TOR_PROXY="socks5h://127.0.0.1:9050"
+
+# ---------- helpers ----------
+show_help() {
+  cat <<'EOF'
+Usage: quakes [min_magnitude] [limit]
+
+Print recent earthquakes from USGS (no API key).
+All traffic via Tor.
+
+Options:
+  -h, --help   Show this help message and exit.
+EOF
+}
+
+# ---------- argument parsing ----------
+while (( $# )); do
+  case "$1" in
+    -h|--help) show_help; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+MIN_MAG=${1:-$MIN_MAG}
+LIMIT=${2:-$LIMIT}
+
+# ---------- tor check ----------
+if ! curl -fsS --max-time 5 --proxy "$TOR_PROXY" https://check.torproject.org/api/ip >/dev/null 2>&1; then
+  echo "Warning: Tor not reachable, falling back to direct connection" >&2
+  TOR_PROXY=""
+fi
+
+# ---------- fetch earthquakes (USGS, no key) ----------
+QUAKE_URL="https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minmagnitude=${MIN_MAG}&limit=${LIMIT}&orderby=time"
+
+QUAKE_ARGS=(-fsSL --max-time 15)
+[[ -n "$TOR_PROXY" ]] && QUAKE_ARGS+=(--proxy "$TOR_PROXY")
+
+QUAKE_JSON=$(curl "${QUAKE_ARGS[@]}" "$QUAKE_URL") || {
+  echo "Error: earthquake fetch failed" >&2
+  exit 1
+}
+
+# ---------- parse and display ----------
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Recent earthquakes (mag >= ${MIN_MAG})"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+COUNT=$(echo "$QUAKE_JSON" | jq -r '.features | length')
+if [[ "$COUNT" -eq 0 ]]; then
+  echo "  No earthquakes found."
+  exit 0
+fi
+
+for ((i=0; i<COUNT; i++)); do
+  MAG=$(echo "$QUAKE_JSON" | jq -r ".features[$i].properties.mag")
+  PLACE=$(echo "$QUAKE_JSON" | jq -r ".features[$i].properties.place")
+  TIME=$(echo "$QUAKE_JSON" | jq -r ".features[$i].properties.time")
+  URL=$(echo "$QUAKE_JSON" | jq -r ".features[$i].properties.url")
+  DEPTH=$(echo "$QUAKE_JSON" | jq -r ".features[$i].geometry.coordinates[2]")
+
+  DATE=$(date -d "@$((TIME / 1000))" "+%Y-%m-%d %H:%M UTC" 2>/dev/null || echo "unknown")
+
+  printf "  M%.1f  %s\n" "$MAG" "$PLACE"
+  printf "       %s  depth: %.0f km\n" "$DATE" "$DEPTH"
+  printf "       %s\n" "$URL"
+  echo ""
+done
