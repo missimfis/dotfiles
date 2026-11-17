@@ -17,6 +17,11 @@
       "panes": ["ncmpcpp"]
     },
     {
+      "window_name": "news",
+      "layout": "tiled",
+      "panes": ["newsboat", "newsraft"]
+    },
+    {
       "window_name": "r shop",
       "layout": "main-horizontal",
       "start_directory": "/home/lion/Dokumente/code/rust/shop/",
@@ -31,12 +36,12 @@
     {
       "window_name": "cv",
       "layout": "main-horizontal",
-      "start_directory": "/home/lion/Dokumente/Bewerbungen/newtrial/",
+      "start_directory": "/home/lion/Dokumente/Bewerbungen/cv-project/",
       "panes": ["", ""]
     },
     {
-      "window_name": "privacy",
-      "start_directory": "/home/lion/Dokumente/latex/privacy/",
+      "window_name": "digis",
+      "start_directory": "/home/lion/Dokumente/latex/digis/",
       "layout": "main-horizontal",
       "panes": ["", ""]
     }
