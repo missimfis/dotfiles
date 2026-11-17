@@ -47,5 +47,17 @@ alias s="git checkout stable"
 
 alias l="eza -lah --icons"
 
-alias reload="clear && source ~/.zshrc"
+alias reload="exec zsh"
+
+# Model management
+alias llm-list='llm list'
+alias llm-server='llm server'
+alias llm-start='llm server start'
+alias llm-stop='llm server stop'
+alias llm-status='llm server status'
+alias llm-logs='llm server logs'
+
+# GPU tuning
+alias gpu-perf='gpu-tune'
+alias gpu-status='cat /sys/class/drm/card*/device/power_dpm_force_performance_level 2>/dev/null || echo "check with sudo"'
 

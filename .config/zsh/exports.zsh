@@ -26,5 +26,16 @@ export MOZ_ENABLE_WAYLAND=1
 # Go environment (kept after PATH is built)
 export GOPATH=$HOME/.local/share/go
 
+# Ollama API base for aider and other tools
+export OLLAMA_API_BASE=http://127.0.0.1:11434
+
+# llama.cpp API (alias for opencode)
+export LLAMACPP_API_BASE=http://127.0.0.1:8080/v1
+
+# GPU tuning for Radeon 780M Vulkan (RADV)
+export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+export AMD_VULKAN_ASYNC_COMPUTE=1
+export RADV_PERFTEST=aco
+
 # Initialise zoxide (still useful)
 
